@@ -163,6 +163,31 @@ textarea.finp{resize:none;min-height:70px}
 .evedit{background:var(--bg2);color:var(--text)}.evdel{background:#fee2e2;color:#dc2626}
 #toast{position:fixed;bottom:calc(var(--sb) + 80px);left:50%;transform:translateX(-50%) translateY(16px);background:#1a1a14;color:#fff;padding:9px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:300;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── AHEAD VIEW ── */
+#ahead-view{display:none;padding-bottom:90px}
+#ahead-view.on{display:block}
+.ahead-day{margin-bottom:4px}
+.ahead-day-hdr{padding:10px 16px 4px;display:flex;align-items:baseline;gap:8px}
+.ahead-day-name{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
+.ahead-day-date{font-size:13px;color:var(--t3)}
+.ahead-day-hdr.is-today .ahead-day-name{color:var(--green)}
+.ahead-day-hdr.is-today .ahead-day-date{color:var(--green)}
+.ahead-empty{font-size:13px;color:var(--t3);padding:4px 16px 10px;font-style:italic}
+
+/* ── TODO ── */
+.todo-strip-title{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--cassie);padding:8px 16px 4px}
+.todo-strip-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #fde68a}
+.todo-strip-item:last-child{border-bottom:none}
+.todo-cb{width:20px;height:20px;border-radius:50%;border:2px solid var(--bdr);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.todo-cb.done{background:var(--green);border-color:var(--green)}
+.todo-cb.done::after{content:'\2713';color:#fff;font-size:11px;font-weight:800}
+.todo-text{font-size:14px;color:var(--text);flex:1;line-height:1.4}
+.todo-text.done{text-decoration:line-through;color:var(--t3)}
+.todo-del{font-size:16px;color:var(--t3);cursor:pointer;padding:2px 4px;background:none;border:none;font-family:inherit}
+.todo-modal-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bdr)}
+.todo-modal-item:last-child{border-bottom:none}
+.todo-empty{text-align:center;padding:24px;color:var(--t3);font-size:14px}
 </style>
 </head>
 <body>
@@ -190,12 +215,25 @@ textarea.finp{resize:none;min-height:70px}
     <button class="tb-btn" id="todaybtn">&#8857;</button>
   </div>
   <div id="vtabs">
-    <div class="vtab on" data-v="month">Month</div>
+    <div class="vtab on" data-v="ahead">7 Days</div>
+    <div class="vtab" data-v="month">Month</div>
     <div class="vtab" data-v="week">Week</div>
     <div class="vtab" data-v="day">Day</div>
   </div>
   <div id="main">
-    <div id="month-view">
+    <!-- 7-DAY LOOKAHEAD -->
+    <div id="ahead-view">
+      <div style="padding:12px 16px 6px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bdr)">
+        <div style="font-size:17px;font-weight:800;color:var(--g4)">Next 7 Days</div>
+        <button onclick="openTodo()" style="display:flex;align-items:center;gap:5px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#10003; To-Do</button>
+      </div>
+      <!-- TO-DO STRIP -->
+      <div id="todo-strip" style="display:none;border-bottom:1px solid var(--bdr);background:#fffbf0"></div>
+      <!-- AHEAD LIST -->
+      <div id="ahead-list" style="padding:8px 14px 90px"></div>
+    </div>
+
+    <div id="month-view" class="hidden">
       <div class="mnav"><button id="prevM">&#8249;</button><span id="mlbl"></span><button id="nextM">&#8250;</button></div>
       <div class="wdh"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
       <div class="mgrid" id="mgrid"></div>
@@ -265,6 +303,24 @@ textarea.finp{resize:none;min-height:70px}
 
 <div id="toast"></div>
 
+<!-- TO-DO MODAL -->
+<div class="overlay" id="todomod">
+  <div class="sheet">
+    <div class="shdl"></div>
+    <div class="shhdr">
+      <div class="shtit">To-Do List</div>
+      <button class="shcls" onclick="CM('todomod')">&#x2715;</button>
+    </div>
+    <div style="padding:14px 18px 0">
+      <div style="display:flex;gap:8px">
+        <input type="text" class="finp" id="todo-input" placeholder="Add a to-do item..." style="flex:1"/>
+        <button onclick="addTodo()" style="background:var(--green);color:#fff;border:none;border-radius:var(--r2);padding:11px 16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0">Add</button>
+      </div>
+    </div>
+    <div id="todo-list-modal" style="padding:10px 18px 8px"></div>
+  </div>
+</div>
+
 <script>
 var GCID = '861642868717-pnt69qjsjcfibqlcm1kdgv006afhl3tb.apps.googleusercontent.com';
 var GAPIKEY = 'AIzaSyD7IjheoCZ2GmGD-_heJwewuvQGIWJ4h3k';
@@ -281,18 +337,21 @@ var FAM = [
 var COLS = ['#2d6a4f','#1d6fb5','#7c3aed','#d97706','#dc2626','#db2777','#0891b2','#ea580c','#059669','#4f46e5','#be185d','#b45309'];
 
 var RROPTS = [
-  {l:'None',    v:''},
-  {l:'Daily',   v:'FREQ=DAILY'},
-  {l:'Weekly',  v:'FREQ=WEEKLY'},
-  {l:'Monthly', v:'FREQ=MONTHLY'}
+  {l:'None',       v:''},
+  {l:'Daily',      v:'FREQ=DAILY'},
+  {l:'Weekly',     v:'FREQ=WEEKLY'},
+  {l:'Biweekly',   v:'FREQ=WEEKLY;INTERVAL=2'},
+  {l:'Monthly',    v:'FREQ=MONTHLY'}
 ];
 
 var REMS = [
-  {l:'At time', m:0},
-  {l:'15 min',  m:-15},
-  {l:'1 hour',  m:-60},
-  {l:'1 day',   m:-1440},
-  {l:'1 week',  m:-10080}
+  {l:'At time',  m:0},
+  {l:'15 min',   m:-15},
+  {l:'1 hour',   m:-60},
+  {l:'1 day',    m:-1440},
+  {l:'1 week',   m:-10080},
+  {l:'2 weeks',  m:-20160},
+  {l:'3 weeks',  m:-30240}
 ];
 
 var S = {
@@ -370,6 +429,7 @@ function evsForDate(date) {
 
 function renderAll() {
   el('tb-month').textContent = S.cur.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+  renderAhead();
   renderMonth();
   renderWeek();
   renderDay();
@@ -537,15 +597,21 @@ function setupFAB() {
 
 function sv(v) {
   S.view = v;
-  ['month-view','week-view','day-view','settings-view'].forEach(function(id) {
+  ['ahead-view','month-view','week-view','day-view','settings-view'].forEach(function(id) {
     var e = el(id);
+    if (!e) return;
     if (id === 'settings-view') { e.style.display = 'none'; e.classList.remove('on'); }
+    else if (id === 'ahead-view') { e.style.display = 'none'; e.classList.remove('on'); }
     else { e.classList.add('hidden'); }
   });
   document.querySelectorAll('.vtab').forEach(function(t) { t.classList.toggle('on', t.dataset.v === v); });
   if (v === 'settings') {
     el('settings-view').style.display = 'block';
     el('vtabs').style.display = 'none';
+  } else if (v === 'ahead') {
+    el('ahead-view').style.display = 'block';
+    el('vtabs').style.display = 'flex';
+    renderAhead();
   } else {
     el(v + '-view').classList.remove('hidden');
     el('vtabs').style.display = 'flex';
@@ -564,7 +630,7 @@ function sn(n) {
     el('settings-view').style.display = 'none';
     el('settings-view').classList.remove('on');
     el('vtabs').style.display = 'flex';
-    sv(S.view === 'month' || S.view === 'week' || S.view === 'day' ? S.view : 'day');
+    sv(S.view === 'month' || S.view === 'week' || S.view === 'day' || S.view === 'ahead' ? S.view : 'ahead');
   }
 }
 
@@ -880,7 +946,7 @@ function gcDel(gcid) {
 function showApp() {
   el('auth').classList.add('hidden');
   el('app').classList.remove('hidden');
-  sv('day');
+  sv('ahead');
   renderAll();
 }
 
@@ -941,6 +1007,141 @@ document.querySelectorAll('.overlay').forEach(function(o) {
   o.onclick = function(e) { if (e.target === o) CM(o.id); };
 });
 
+/* ── TODO LIST ── */
+var TODOS = [];
+
+function lsTodos() {
+  TODOS = lsGet('todos') || [];
+}
+
+function saveTodos() {
+  lsSet('todos', TODOS);
+}
+
+function addTodo() {
+  var inp = el('todo-input');
+  var text = inp.value.trim();
+  if (!text) return;
+  TODOS.push({id: 'td' + Date.now(), text: text, done: false, createdAt: new Date().toISOString()});
+  inp.value = '';
+  saveTodos();
+  renderTodoModal();
+  renderTodoStrip();
+}
+
+function toggleTodo(id) {
+  var t = TODOS.find(function(x) { return x.id === id; });
+  if (t) { t.done = !t.done; saveTodos(); renderTodoStrip(); renderTodoModal(); }
+}
+
+function deleteTodo(id) {
+  TODOS = TODOS.filter(function(x) { return x.id !== id; });
+  saveTodos(); renderTodoStrip(); renderTodoModal();
+}
+
+function openTodo() {
+  renderTodoModal();
+  OM('todomod');
+  setTimeout(function() { el('todo-input').focus(); }, 300);
+}
+
+function renderTodoStrip() {
+  var strip = el('todo-strip');
+  var active = TODOS.filter(function(t) { return !t.done; });
+  var all = TODOS;
+  if (all.length === 0) { strip.style.display = 'none'; return; }
+  strip.style.display = 'block';
+  strip.innerHTML = '<div class="todo-strip-title">&#10003; TO-DO (' + active.length + ' remaining)</div>'
+    + all.map(function(t) {
+      return '<div class="todo-strip-item">'
+        + '<div class="todo-cb ' + (t.done ? 'done' : '') + '" onclick="toggleTodo('' + t.id + '')"></div>'
+        + '<span class="todo-text ' + (t.done ? 'done' : '') + '">' + t.text + '</span>'
+        + '<button class="todo-del" onclick="deleteTodo('' + t.id + '')">&#x2715;</button>'
+        + '</div>';
+    }).join('');
+}
+
+function renderTodoModal() {
+  var list = el('todo-list-modal');
+  if (!list) return;
+  if (TODOS.length === 0) {
+    list.innerHTML = '<div class="todo-empty">No to-dos yet — add one above!</div>';
+    return;
+  }
+  list.innerHTML = TODOS.map(function(t) {
+    return '<div class="todo-modal-item">'
+      + '<div class="todo-cb ' + (t.done ? 'done' : '') + '" onclick="toggleTodo('' + t.id + '')"></div>'
+      + '<span class="todo-text ' + (t.done ? 'done' : '') + '" style="flex:1">' + t.text + '</span>'
+      + '<button class="todo-del" onclick="deleteTodo('' + t.id + '')">&#x2715;</button>'
+      + '</div>';
+  }).join('');
+}
+
+/* ── ENTER KEY for todo input ── */
+document.addEventListener('DOMContentLoaded', function() {
+  var inp = el('todo-input');
+  if (inp) inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTodo(); });
+});
+
+/* ── 7-DAY AHEAD VIEW ── */
+function renderAhead() {
+  var list = el('ahead-list');
+  if (!list) return;
+  list.innerHTML = '';
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  var hasAny = false;
+  for (var i = 0; i < 7; i++) {
+    var day = new Date(today);
+    day.setDate(today.getDate() + i);
+    var evs = evsForDate(day).sort(function(a, b) {
+      if (!a.startTime) return -1;
+      if (!b.startTime) return 1;
+      return new Date(a.startTime) - new Date(b.startTime);
+    });
+
+    var todayFlag = (i === 0);
+    var dayLabel = todayFlag ? 'Today' : shortDay(day);
+    var dateLabel = day.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+
+    var section = document.createElement('div');
+    section.className = 'ahead-day';
+
+    var hdrClass = 'ahead-day-hdr' + (todayFlag ? ' is-today' : '');
+    section.innerHTML = '<div class="' + hdrClass + '">'
+      + '<span class="ahead-day-name">' + dayLabel + '</span>'
+      + '<span class="ahead-day-date">' + dateLabel + '</span>'
+      + '</div>';
+
+    if (evs.length === 0) {
+      section.innerHTML += '<div class="ahead-empty">No events</div>';
+    } else {
+      hasAny = true;
+      evs.forEach(function(ev) {
+        var st = ev.startTime ? new Date(ev.startTime) : null;
+        var en = ev.endTime ? new Date(ev.endTime) : null;
+        var ph = (ev.pax || []).map(function(pid) {
+          var m = FAM.find(function(f) { return f.id === pid; });
+          return m ? '<div class="pav" style="background:' + m.color + '">' + m.init + '</div>' : '';
+        }).join('');
+        var card = document.createElement('div');
+        card.className = 'ecard';
+        card.style.borderLeftColor = ev.color;
+        card.innerHTML = '<div class="etcol">'
+          + (ev.allDay ? '<span class="et2">All day</span>' : (st ? '<span class="et">' + fmtTime(st) + '</span>' + (en ? '<span class="et2">' + fmtTime(en) + '</span>' : '') : ''))
+          + '</div><div class="ebody"><div class="etit">' + ev.title + '</div>'
+          + '<div class="emeta">' + (ev.location ? '<span>&#128205; ' + ev.location + '</span>' : '') + (ev.rrule ? '<span>&#128260;</span>' : '') + '</div>'
+          + '<div class="epax">' + ph + '</div></div>';
+        card.onclick = (function(e) { return function() { showDet(e); }; })(ev);
+        section.appendChild(card);
+      });
+    }
+    list.appendChild(section);
+  }
+  renderTodoStrip();
+}
+
 /* ── SAMPLE DATA ── */
 function sampleEvs() {
   var n = new Date(), y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
@@ -965,6 +1166,7 @@ function sampleEvs() {
   S.evs = lsGet('evs') || sampleEvs();
   S.calId = lsGet('calId') || null;
   S.cur = new Date(); S.sel = new Date();
+  lsTodos();
   if (saved) {
     S.user = saved; S.demo = saved.isDemo || false;
     showApp();
