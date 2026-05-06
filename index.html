@@ -10,2591 +10,647 @@
 <title>FamilySync</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
-
 <style>
-/* ═══════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════ */
-:root {
-  --green:       #2d6a4f;
-  --green-light: #52b788;
-  --green-pale:  #d8f3dc;
-  --green-dark:  #1b4332;
-  --bg:          #faf8f4;
-  --bg2:         #f2ede4;
-  --bg3:         #e8e0d0;
-  --card:        #ffffff;
-  --text:        #1a1a14;
-  --text2:       #5c5a50;
-  --text3:       #9c9a8e;
-  --border:      #e0d8c8;
-  --shadow:      0 2px 12px rgba(0,0,0,0.08);
-  --shadow-lg:   0 8px 32px rgba(0,0,0,0.14);
-  --radius:      16px;
-  --radius-sm:   10px;
-  --serif:       Georgia, 'Times New Roman', serif;
-  --sans:        -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-
-  /* Member colors */
-  --rudi:   #2d6a4f;
-  --tesha:  #7c3aed;
-  --cassie: #d97706;
-  --tyler:  #1d6fb5;
-
-  /* Event colors */
-  --col-1: #2d6a4f;
-  --col-2: #1d6fb5;
-  --col-3: #7c3aed;
-  --col-4: #d97706;
-  --col-5: #dc2626;
-  --col-6: #db2777;
-  --col-7: #0891b2;
-  --col-8: #ea580c;
-  --col-9: #059669;
-  --col-10:#4f46e5;
-  --col-11:#be185d;
-  --col-12:#b45309;
-
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bot: env(safe-area-inset-bottom, 0px);
-}
-
-/* ═══════════════════════════════════════
-   RESET & BASE
-═══════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; height: 100%; }
-body {
-  font-family: var(--sans);
-  background: var(--bg);
-  color: var(--text);
-  height: 100%;
-  overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-  user-select: none;
-}
-button { font-family: var(--sans); cursor: pointer; border: none; background: none; }
-input, textarea, select { font-family: var(--sans); }
-a { color: inherit; text-decoration: none; }
-
-/* ═══════════════════════════════════════
-   APP SHELL
-═══════════════════════════════════════ */
-#app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-}
-
-/* ═══════════════════════════════════════
-   TOP BAR
-═══════════════════════════════════════ */
-#topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(var(--safe-top) + 12px) 20px 12px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  gap: 12px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 10;
-}
-#topbar .logo {
-  font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--green-dark);
-  letter-spacing: -0.02em;
-}
-#topbar .logo span { color: var(--green); }
-.topbar-center {
-  flex: 1;
-  text-align: center;
-}
-.topbar-month {
-  font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-.topbar-actions { display: flex; gap: 8px; align-items: center; }
-.icon-btn {
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  color: var(--text2);
-  transition: background 0.15s;
-}
-.icon-btn:hover, .icon-btn:active { background: var(--bg2); }
-
-/* ═══════════════════════════════════════
-   VIEW TABS
-═══════════════════════════════════════ */
-#view-tabs {
-  display: flex;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.view-tab {
-  flex: 1;
-  padding: 10px 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text3);
-  text-align: center;
-  letter-spacing: 0.02em;
-  transition: color 0.15s;
-  position: relative;
-}
-.view-tab.active { color: var(--green); }
-.view-tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 20%; right: 20%;
-  height: 2px;
-  background: var(--green);
-  border-radius: 2px 2px 0 0;
-}
-
-/* ═══════════════════════════════════════
-   MAIN SCROLL AREA
-═══════════════════════════════════════ */
-#main {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  position: relative;
-}
-
-/* ═══════════════════════════════════════
-   MONTH VIEW
-═══════════════════════════════════════ */
-#month-view { display: none; padding: 0 0 80px; }
-#month-view.active { display: block; }
-
-.month-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px 8px;
-}
-.month-nav button {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  font-size: 20px;
-  color: var(--green);
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.month-nav button:hover { background: var(--green-pale); }
-
-.weekday-header {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  padding: 0 12px;
-  margin-bottom: 4px;
-}
-.weekday-header span {
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text3);
-  text-transform: uppercase;
-  padding: 4px 0;
-}
-
-.month-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  padding: 0 12px;
-}
-.month-cell {
-  aspect-ratio: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 4px 2px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.12s;
-  min-height: 48px;
-}
-.month-cell:hover, .month-cell:active { background: var(--bg2); }
-.month-cell.other-month .day-num { color: var(--text3); opacity: 0.4; }
-.month-cell.today .day-num {
-  background: var(--green);
-  color: #fff;
-  border-radius: 50%;
-  width: 26px; height: 26px;
-  display: flex; align-items: center; justify-content: center;
-}
-.month-cell.selected .day-num {
-  background: var(--green-pale);
-  color: var(--green-dark);
-  border-radius: 50%;
-  width: 26px; height: 26px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 600;
-}
-.day-num {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  margin-bottom: 2px;
-  width: 26px; height: 26px;
-  display: flex; align-items: center; justify-content: center;
-}
-.event-dots {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 32px;
-}
-.event-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-/* ═══════════════════════════════════════
-   DAY VIEW
-═══════════════════════════════════════ */
-#day-view { display: none; padding-bottom: 80px; }
-#day-view.active { display: block; }
-
-.day-header {
-  padding: 16px 20px 8px;
-  border-bottom: 1px solid var(--border);
-}
-.day-header-date {
-  font-family: var(--serif);
-  font-size: 28px;
-  font-weight: 300;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-.day-header-date strong { font-weight: 600; color: var(--green-dark); }
-.day-header-sub {
-  font-size: 13px;
-  color: var(--text3);
-  margin-top: 2px;
-}
-
-.day-strip {
-  display: flex;
-  gap: 6px;
-  padding: 12px 20px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  border-bottom: 1px solid var(--border);
-}
-.day-strip::-webkit-scrollbar { display: none; }
-.day-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 6px 10px;
-  border-radius: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.12s;
-  min-width: 44px;
-}
-.day-chip:hover { background: var(--bg2); }
-.day-chip.today { background: var(--green-pale); }
-.day-chip.selected { background: var(--green); }
-.day-chip .chip-wd {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--text3);
-  text-transform: uppercase;
-}
-.day-chip.selected .chip-wd { color: rgba(255,255,255,0.7); }
-.day-chip.today:not(.selected) .chip-wd { color: var(--green); }
-.day-chip .chip-d {
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--text);
-}
-.day-chip.selected .chip-d { color: #fff; }
-.day-chip.today:not(.selected) .chip-d { color: var(--green-dark); font-weight: 600; }
-
-.events-list { padding: 12px 16px; }
-.no-events {
-  text-align: center;
-  padding: 48px 20px;
-  color: var(--text3);
-}
-.no-events .no-events-icon { font-size: 40px; margin-bottom: 12px; }
-.no-events p { font-size: 15px; }
-
-.event-card {
-  display: flex;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--card);
-  border-radius: var(--radius-sm);
-  margin-bottom: 8px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.1s;
-  position: relative;
-  overflow: hidden;
-}
-.event-card::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-}
-.event-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
-.event-card:active { transform: translateY(0); }
-.event-time-col {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 52px;
-  flex-shrink: 0;
-}
-.event-time {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text2);
-}
-.event-end-time {
-  font-size: 11px;
-  color: var(--text3);
-}
-.event-body { flex: 1; min-width: 0; }
-.event-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.event-meta {
-  font-size: 12px;
-  color: var(--text3);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.event-meta span { display: flex; align-items: center; gap: 3px; }
-.event-participants {
-  display: flex;
-  gap: -4px;
-  margin-top: 6px;
-}
-.participant-avatar {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-  border: 2px solid var(--card);
-  margin-left: -4px;
-}
-.participant-avatar:first-child { margin-left: 0; }
-
-/* ═══════════════════════════════════════
-   WEEK VIEW
-═══════════════════════════════════════ */
-#week-view { display: none; padding-bottom: 80px; }
-#week-view.active { display: block; }
-
-.week-days-header {
-  display: grid;
-  grid-template-columns: 48px repeat(7, 1fr);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0;
-  background: var(--card);
-  z-index: 5;
-}
-.week-day-col-header {
-  padding: 8px 4px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--text3);
-  text-transform: uppercase;
-  border-right: 1px solid var(--border);
-}
-.week-day-col-header .wk-date {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text);
-  display: block;
-  margin-top: 2px;
-}
-.week-day-col-header.today .wk-date {
-  background: var(--green);
-  color: #fff;
-  border-radius: 50%;
-  width: 26px; height: 26px;
-  display: flex; align-items: center; justify-content: center;
-  margin: 2px auto 0;
-}
-.week-grid {
-  display: grid;
-  grid-template-columns: 48px repeat(7, 1fr);
-  overflow-y: auto;
-  max-height: calc(100vh - 280px);
-}
-.week-time-col {
-  border-right: 1px solid var(--border);
-}
-.week-time-slot {
-  height: 48px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 2px 6px 0 0;
-  font-size: 10px;
-  color: var(--text3);
-  border-bottom: 1px solid var(--bg3);
-}
-.week-day-col {
-  border-right: 1px solid var(--border);
-  position: relative;
-}
-.week-hour-row {
-  height: 48px;
-  border-bottom: 1px solid var(--bg3);
-}
-.week-event-block {
-  position: absolute;
-  left: 2px; right: 2px;
-  border-radius: 6px;
-  padding: 2px 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #fff;
-  overflow: hidden;
-  cursor: pointer;
-  z-index: 2;
-}
-
-/* ═══════════════════════════════════════
-   BOTTOM NAV
-═══════════════════════════════════════ */
-#bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--card);
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 8px 0 calc(var(--safe-bot) + 8px);
-  z-index: 20;
-}
-.nav-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 4px;
-  color: var(--text3);
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.15s;
-  letter-spacing: 0.03em;
-}
-.nav-item.active { color: var(--green); }
-.nav-item .nav-icon { font-size: 22px; line-height: 1; }
-.nav-fab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.fab-btn {
-  width: 52px; height: 52px;
-  border-radius: 50%;
-  background: var(--green);
-  color: #fff;
-  font-size: 26px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 16px rgba(45,106,79,0.4);
-  transition: transform 0.15s, box-shadow 0.15s;
-  margin-top: -16px;
-}
-.fab-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(45,106,79,0.5); }
-.fab-btn:active { transform: scale(0.97); }
-
-/* ═══════════════════════════════════════
-   MODAL / SHEET
-═══════════════════════════════════════ */
-.modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 50;
-  display: none;
-  align-items: flex-end;
-  backdrop-filter: blur(2px);
-}
-.modal-overlay.open { display: flex; }
-.modal-sheet {
-  background: var(--card);
-  border-radius: 24px 24px 0 0;
-  width: 100%;
-  max-height: 92vh;
-  overflow-y: auto;
-  padding-bottom: calc(var(--safe-bot) + 16px);
-  animation: slideUp 0.3s cubic-bezier(0.32,0.72,0,1);
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-.modal-handle {
-  width: 40px; height: 4px;
-  background: var(--bg3);
-  border-radius: 2px;
-  margin: 12px auto 4px;
-}
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 20px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.modal-title {
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-.modal-close {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  background: var(--bg2);
-  font-size: 18px;
-  color: var(--text2);
-  display: flex; align-items: center; justify-content: center;
-}
-
-/* ═══════════════════════════════════════
-   FORM ELEMENTS
-═══════════════════════════════════════ */
-.form-section { padding: 16px 20px 0; }
-.form-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 6px;
-  display: block;
-}
-.form-input {
-  width: 100%;
-  padding: 12px 14px;
-  background: var(--bg2);
-  border: 1.5px solid transparent;
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.15s, background 0.15s;
-}
-.form-input:focus {
-  border-color: var(--green);
-  background: var(--card);
-}
-.form-input::placeholder { color: var(--text3); }
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-textarea.form-input { resize: none; min-height: 80px; }
-
-/* Color picker */
-.color-picker {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.color-swatch {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.12s;
-  position: relative;
-}
-.color-swatch:hover { transform: scale(1.1); }
-.color-swatch.selected::after {
-  content: '✓';
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-/* Participant chips */
-.participant-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-}
-.participant-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px 6px 8px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.12s;
-  background: var(--card);
-}
-.participant-chip.selected {
-  border-color: transparent;
-  color: #fff;
-}
-.participant-chip .chip-avatar {
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-}
-
-/* Reminder tags */
-.reminder-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-.reminder-tag {
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-.reminder-tag.selected {
-  background: var(--green-pale);
-  border-color: var(--green);
-  color: var(--green-dark);
-}
-
-/* Recurrence select */
-.recurrence-select {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.recurrence-opt {
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-.recurrence-opt.selected {
-  background: var(--green);
-  border-color: var(--green);
-  color: #fff;
-}
-
-/* Submit button */
-.btn-primary {
-  width: calc(100% - 40px);
-  margin: 20px 20px 0;
-  padding: 15px;
-  background: var(--green);
-  color: #fff;
-  border-radius: var(--radius-sm);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  transition: background 0.15s, transform 0.1s;
-}
-.btn-primary:hover { background: var(--green-dark); }
-.btn-primary:active { transform: scale(0.99); }
-.btn-primary:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
-
-/* ═══════════════════════════════════════
-   EVENT DETAIL
-═══════════════════════════════════════ */
-.event-detail-banner {
-  height: 80px;
-  display: flex;
-  align-items: flex-end;
-  padding: 16px 20px;
-}
-.event-detail-title {
-  font-family: var(--serif);
-  font-size: 24px;
-  font-weight: 500;
-  color: #fff;
-  letter-spacing: -0.01em;
-}
-.detail-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.detail-icon { font-size: 18px; margin-top: 1px; flex-shrink: 0; }
-.detail-content { flex: 1; }
-.detail-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 2px;
-}
-.detail-value { font-size: 14px; color: var(--text2); }
-.detail-value strong { color: var(--text); font-weight: 600; }
-
-/* ═══════════════════════════════════════
-   AUTH SCREEN
-═══════════════════════════════════════ */
-#auth-screen {
-  position: fixed; inset: 0;
-  background: var(--bg);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 32px;
-  text-align: center;
-}
-.auth-logo {
-  font-family: var(--serif);
-  font-size: 48px;
-  font-weight: 300;
-  font-style: italic;
-  color: var(--green-dark);
-  letter-spacing: -0.03em;
-  margin-bottom: 8px;
-}
-.auth-logo span { color: var(--green); font-style: normal; font-weight: 600; }
-.auth-tagline {
-  font-size: 16px;
-  color: var(--text3);
-  margin-bottom: 48px;
-  line-height: 1.5;
-}
-.auth-family {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 40px;
-}
-.auth-member {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.auth-member-avatar {
-  width: 52px; height: 52px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.auth-member-name { font-size: 11px; font-weight: 600; color: var(--text3); }
-.google-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  max-width: 320px;
-  padding: 14px 24px;
-  background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  transition: box-shadow 0.15s, border-color 0.15s;
-  box-shadow: var(--shadow);
-}
-.google-btn:hover { border-color: var(--green); box-shadow: 0 4px 16px rgba(45,106,79,0.15); }
-.google-logo { width: 20px; height: 20px; }
-.auth-demo {
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--text3);
-}
-.auth-demo button {
-  color: var(--green);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-/* ═══════════════════════════════════════
-   SETTINGS
-═══════════════════════════════════════ */
-#settings-view { display: none; padding-bottom: 80px; }
-#settings-view.active { display: block; }
-
-.settings-header {
-  padding: 24px 20px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.settings-title {
-  font-family: var(--serif);
-  font-size: 28px;
-  font-weight: 300;
-  color: var(--text);
-  letter-spacing: -0.02em;
-}
-.settings-section {
-  padding: 20px 20px 0;
-}
-.settings-section-title {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 10px;
-}
-.settings-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-.settings-row {
-  display: flex;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  gap: 12px;
-}
-.settings-row:last-child { border-bottom: none; }
-.settings-row-icon { font-size: 20px; }
-.settings-row-body { flex: 1; }
-.settings-row-label { font-size: 15px; font-weight: 500; color: var(--text); }
-.settings-row-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
-.toggle {
-  width: 44px; height: 26px;
-  background: var(--bg3);
-  border-radius: 13px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
-.toggle.on { background: var(--green); }
-.toggle::after {
-  content: '';
-  position: absolute;
-  width: 20px; height: 20px;
-  background: #fff;
-  border-radius: 50%;
-  top: 3px; left: 3px;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-}
-.toggle.on::after { transform: translateX(18px); }
-
-/* Family member list */
-.member-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.member-row:last-child { border-bottom: none; }
-.member-avatar-lg {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; color: #fff;
-  flex-shrink: 0;
-}
-.member-info { flex: 1; }
-.member-name { font-size: 15px; font-weight: 600; color: var(--text); }
-.member-role { font-size: 12px; color: var(--text3); }
-.member-badge {
-  font-size: 11px; font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  letter-spacing: 0.04em;
-}
-.badge-owner { background: var(--green-pale); color: var(--green-dark); }
-.badge-viewer { background: var(--bg2); color: var(--text3); }
-
-/* Google connection status */
-.gcal-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--green-pale);
-  border-radius: var(--radius-sm);
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: var(--green-dark);
-  font-weight: 500;
-}
-.gcal-status .dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--green);
-  flex-shrink: 0;
-}
-
-/* ═══════════════════════════════════════
-   TOAST
-═══════════════════════════════════════ */
-#toast {
-  position: fixed;
-  bottom: calc(var(--safe-bot) + 80px);
-  left: 50%; transform: translateX(-50%) translateY(20px);
-  background: var(--text);
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 200;
-  opacity: 0;
-  transition: opacity 0.2s, transform 0.2s;
-  white-space: nowrap;
-  pointer-events: none;
-}
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ═══════════════════════════════════════
-   LOADING
-═══════════════════════════════════════ */
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid var(--bg3);
-  border-top-color: var(--green);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ═══════════════════════════════════════
-   GOOGLE CALENDAR SETUP BANNER
-═══════════════════════════════════════ */
-.gcal-setup-banner {
-  margin: 12px 16px;
-  padding: 14px 16px;
-  background: #fff8e6;
-  border: 1px solid #f59e0b;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: #92400e;
-}
-.gcal-setup-banner button {
-  margin-left: auto;
-  padding: 6px 14px;
-  background: #f59e0b;
-  color: #fff;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ═══════════════════════════════════════
-   UTILITIES
-═══════════════════════════════════════ */
-.hidden { display: none !important; }
-.text-center { text-align: center; }
-.mt-4 { margin-top: 4px; }
-.mt-8 { margin-top: 8px; }
-.mt-16 { margin-top: 16px; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f3ee;color:#1a1a14}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea,select{font-family:inherit;font-size:16px}
+:root{
+  --green:#2d6a4f;--g2:#52b788;--g3:#d8f3dc;--g4:#1b4332;
+  --bg:#f5f3ee;--bg2:#ece9e0;--bg3:#e0dbd0;--card:#fff;
+  --text:#1a1a14;--t2:#5c5a50;--t3:#9a9888;--bdr:#ddd8cc;
+  --rudi:#2d6a4f;--tesha:#7c3aed;--cassie:#d97706;--tyler:#1d6fb5;
+  --sh:0 2px 12px rgba(0,0,0,.08);--r:14px;--r2:10px;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.hidden{display:none!important}
+/* AUTH */
+#auth{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;text-align:center}
+.alogo{font-size:40px;font-weight:800;color:var(--g4);letter-spacing:-1px;margin-bottom:4px}
+.alogo span{color:var(--green)}
+.atag{font-size:15px;color:var(--t3);margin-bottom:32px}
+.aavs{display:flex;gap:12px;justify-content:center;margin-bottom:32px}
+.aav{display:flex;flex-direction:column;align-items:center;gap:4px}
+.aac{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.aan{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.04em}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:290px;padding:14px 18px;background:var(--card);border:1.5px solid var(--bdr);border-radius:var(--r2);font-size:15px;font-weight:700;color:var(--text);cursor:pointer;box-shadow:var(--sh);margin-bottom:12px}
+.gbtn:disabled{opacity:.6}
+.dbtn{font-size:14px;color:var(--green);font-weight:700;text-decoration:underline;padding:8px;cursor:pointer}
+/* TOPBAR */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:calc(var(--st) + 10px) 16px 10px;background:var(--card);border-bottom:1px solid var(--bdr);flex-shrink:0;z-index:10}
+.logo{font-size:20px;font-weight:800;color:var(--g4)}.logo span{color:var(--green)}
+#tb-month{font-size:15px;font-weight:600;color:var(--text)}
+.tb-btn{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--t2)}
+.tb-btn:active{background:var(--bg2)}
+/* TABS */
+#vtabs{display:flex;background:var(--card);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.vtab{flex:1;padding:9px 0;font-size:13px;font-weight:600;color:var(--t3);text-align:center;cursor:pointer;position:relative}
+.vtab.on{color:var(--green)}
+.vtab.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--green);border-radius:2px 2px 0 0}
+/* MAIN */
+#main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+/* MONTH */
+.mnav{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px}
+.mnav button{width:34px;height:34px;border-radius:50%;font-size:22px;color:var(--green);display:flex;align-items:center;justify-content:center}
+.mnav button:active{background:var(--g3)}
+.mnav span{font-size:15px;font-weight:700}
+.wdh{display:grid;grid-template-columns:repeat(7,1fr);padding:0 10px}
+.wdh span{text-align:center;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;padding:3px 0}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;padding:0 10px 90px}
+.mcell{display:flex;flex-direction:column;align-items:center;padding:3px 1px;border-radius:8px;cursor:pointer;min-height:46px}
+.mcell:active{background:var(--bg2)}
+.mcell.other .dn{opacity:.3}
+.dn{font-size:13px;font-weight:500;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin-bottom:2px}
+.mcell.today .dn{background:var(--green);color:#fff;font-weight:800}
+.mcell.sel:not(.today) .dn{background:var(--g3);color:var(--g4);font-weight:800}
+.edots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:28px}
+.edot{width:5px;height:5px;border-radius:50%}
+/* DAY */
+.dhdr{padding:14px 16px 8px;border-bottom:1px solid var(--bdr)}
+.dhdr-date{font-size:20px;font-weight:700}.dhdr-date .tl{color:var(--green)}
+.dstrip{display:flex;gap:4px;padding:10px 16px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--bdr)}
+.dstrip::-webkit-scrollbar{display:none}
+.dchip{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:10px;cursor:pointer;flex-shrink:0;min-width:40px}
+.dchip:active{background:var(--bg2)}.dchip.today{background:var(--g3)}.dchip.sel{background:var(--green)}
+.cwd{font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--t3);text-transform:uppercase}
+.dchip.sel .cwd{color:rgba(255,255,255,.7)}.dchip.today:not(.sel) .cwd{color:var(--green)}
+.cd{font-size:17px;font-weight:500;color:var(--text)}
+.dchip.sel .cd{color:#fff}.dchip.today:not(.sel) .cd{color:var(--g4);font-weight:800}
+.elist{padding:10px 14px 90px}
+.noev{text-align:center;padding:50px 20px;color:var(--t3)}
+.neico{font-size:44px;margin-bottom:10px}
+.ecard{display:flex;gap:10px;padding:12px 14px;background:var(--card);border-radius:var(--r2);margin-bottom:8px;border:1px solid var(--bdr);border-left-width:4px;cursor:pointer;transition:box-shadow .12s}
+.ecard:active{box-shadow:var(--sh)}
+.etcol{min-width:52px;text-align:right;flex-shrink:0}
+.et{font-size:12px;font-weight:700;color:var(--t2)}.et2{font-size:11px;color:var(--t3)}
+.ebody{flex:1;min-width:0}
+.etit{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.emeta{font-size:12px;color:var(--t3);display:flex;gap:8px;flex-wrap:wrap}
+.epax{display:flex;margin-top:5px}
+.pav{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;border:2px solid var(--card);margin-left:-4px}
+.pav:first-child{margin-left:0}
+/* WEEK */
+.wkhdr{display:grid;grid-template-columns:44px repeat(7,1fr);background:var(--card);border-bottom:1px solid var(--bdr);position:sticky;top:0;z-index:5}
+.wkdh{padding:6px 2px;text-align:center;font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--t3);text-transform:uppercase;border-right:1px solid var(--bdr);cursor:pointer}
+.wkdh .wkdd{font-size:15px;font-weight:500;color:var(--text);display:block;margin-top:2px}
+.wkdh.today .wkdd{background:var(--green);color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin:2px auto 0}
+.wkbody{display:grid;grid-template-columns:44px repeat(7,1fr);padding-bottom:90px}
+.wktcol{border-right:1px solid var(--bdr)}
+.wkts{height:48px;display:flex;align-items:flex-start;justify-content:flex-end;padding:2px 5px 0 0;font-size:10px;color:var(--t3);border-bottom:1px solid var(--bg3)}
+.wkdc{border-right:1px solid var(--bdr);position:relative}
+.wkhr{height:48px;border-bottom:1px solid var(--bg3)}
+.wkev{position:absolute;left:1px;right:1px;border-radius:5px;padding:2px 4px;font-size:10px;font-weight:700;color:#fff;overflow:hidden;cursor:pointer;z-index:2}
+/* BNAV */
+#bnav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bdr);display:flex;align-items:center;padding:6px 0 calc(var(--sb) + 6px);z-index:20}
+.nit{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;color:var(--t3);font-size:10px;font-weight:600;cursor:pointer}
+.nit.on{color:var(--green)}.nico{font-size:22px;line-height:1}
+.nfab{flex:1;display:flex;align-items:center;justify-content:center}
+.fab{width:52px;height:52px;border-radius:50%;background:var(--green);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(45,106,79,.4);margin-top:-14px;transition:transform .12s;border:none;cursor:pointer}
+.fab:active{transform:scale(.95)}
+/* SETTINGS */
+#settings-view{display:none;padding-bottom:90px}
+#settings-view.on{display:block}
+.svhdr{padding:20px 16px 12px;border-bottom:1px solid var(--bdr);font-size:24px;font-weight:800}
+.svsec{padding:16px 16px 0}
+.svst{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+.svcard{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);overflow:hidden;margin-bottom:14px}
+.svrow{display:flex;align-items:center;padding:13px 14px;border-bottom:1px solid var(--bdr);gap:10px;cursor:pointer}
+.svrow:last-child{border-bottom:none}
+.svi{font-size:20px;flex-shrink:0}.svb{flex:1}
+.svl{font-size:15px;font-weight:500;color:var(--text)}.svs{font-size:12px;color:var(--t3);margin-top:1px}
+.tog{width:44px;height:26px;background:var(--bg3);border-radius:13px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.tog.on{background:var(--green)}
+.tog::after{content:'';position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.tog.on::after{transform:translateX(18px)}
+.mrow{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--bdr)}
+.mrow:last-child{border-bottom:none}
+.mavlg{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
+.minf{flex:1}.mn{font-size:15px;font-weight:700}.mr{font-size:12px;color:var(--t3)}
+.mb{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+.mb-o{background:var(--g3);color:var(--g4)}.mb-v{background:var(--bg2);color:var(--t3)}
+.gcok{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#e8f5e9;border-radius:var(--r2);margin-bottom:12px;font-size:13px;color:#1b5e20;font-weight:600}
+.gcok .dot{width:8px;height:8px;border-radius:50%;background:#2e7d32;flex-shrink:0}
+/* OVERLAY / SHEET */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;backdrop-filter:blur(2px)}
+.overlay.open{display:flex}
+.sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-height:93vh;overflow-y:auto;padding-bottom:calc(var(--sb) + 12px);animation:up .28s cubic-bezier(.32,.72,0,1)}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.shdl{width:38px;height:4px;background:var(--bg3);border-radius:2px;margin:10px auto 2px}
+.shhdr{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 14px;border-bottom:1px solid var(--bdr)}
+.shtit{font-size:18px;font-weight:800}
+.shcls{width:28px;height:28px;border-radius:50%;background:var(--bg2);font-size:16px;color:var(--t2);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none}
+/* FORM */
+.fsec{padding:13px 18px 0}
+.flbl{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:5px;display:block}
+.finp{width:100%;padding:11px 13px;background:var(--bg2);border:1.5px solid transparent;border-radius:var(--r2);font-size:15px;color:var(--text);outline:none;transition:border-color .15s}
+.finp:focus{border-color:var(--green);background:var(--card)}
+.finp::placeholder{color:var(--t3)}
+textarea.finp{resize:none;min-height:70px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cpkr{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+.csw{width:30px;height:30px;border-radius:50%;cursor:pointer;position:relative;transition:transform .12s}
+.csw:active{transform:scale(1.15)}
+.csw.on::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.pchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}
+.pchip{display:flex;align-items:center;gap:5px;padding:5px 11px 5px 7px;border-radius:999px;border:1.5px solid var(--bdr);font-size:13px;font-weight:600;cursor:pointer;transition:all .12s}
+.pchip.on{color:#fff;border-color:transparent}
+.pca{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff}
+.rtags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.rtag{padding:6px 12px;border-radius:999px;border:1.5px solid var(--bdr);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .12s}
+.rtag.on{background:var(--g3);border-color:var(--green);color:var(--g4)}
+.rropts{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.rropt{padding:7px 13px;border-radius:999px;border:1.5px solid var(--bdr);font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .12s}
+.rropt.on{background:var(--green);border-color:var(--green);color:#fff}
+.savebtn{width:calc(100% - 36px);margin:18px 18px 0;padding:14px;background:var(--green);color:#fff;border-radius:var(--r2);font-size:16px;font-weight:800;cursor:pointer;border:none;font-family:inherit;transition:background .15s,transform .1s}
+.savebtn:active{background:var(--g4);transform:scale(.99)}
+.savebtn:disabled{background:var(--bg3);color:var(--t3);cursor:not-allowed}
+/* DETAIL */
+.evban{padding:18px 18px 14px;min-height:70px;display:flex;align-items:flex-end}
+.evbant{font-size:22px;font-weight:800;color:#fff;line-height:1.2}
+.drow{display:flex;align-items:flex-start;gap:10px;padding:12px 18px;border-bottom:1px solid var(--bdr)}
+.drow:last-child{border-bottom:none}
+.dico{font-size:18px;flex-shrink:0;margin-top:1px}.dcon{flex:1}
+.dlbl{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:2px}
+.dval{font-size:14px;color:var(--t2);line-height:1.5}.dval strong{color:var(--text);font-weight:700}
+.evacts{display:flex;gap:8px;padding:14px 18px}
+.evact{flex:1;padding:12px;border-radius:var(--r2);font-size:14px;font-weight:800;cursor:pointer;border:none;font-family:inherit}
+.evedit{background:var(--bg2);color:var(--text)}.evdel{background:#fee2e2;color:#dc2626}
+/* TOAST */
+#toast{position:fixed;bottom:calc(var(--sb) + 80px);left:50%;transform:translateX(-50%) translateY(16px);background:#1a1a14;color:#fff;padding:9px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:300;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
-<div id="auth-screen">
-  <div class="auth-logo">Family<span>Sync</span></div>
-  <p class="auth-tagline">Keep your family calendar in sync,<br/>beautifully.</p>
-
-  <div class="auth-family">
-    <div class="auth-member">
-      <div class="auth-member-avatar" style="background:var(--rudi)">R</div>
-      <div class="auth-member-name">Rudi</div>
-    </div>
-    <div class="auth-member">
-      <div class="auth-member-avatar" style="background:var(--tesha)">T</div>
-      <div class="auth-member-name">Tesha</div>
-    </div>
-    <div class="auth-member">
-      <div class="auth-member-avatar" style="background:var(--cassie)">C</div>
-      <div class="auth-member-name">Cassie</div>
-    </div>
-    <div class="auth-member">
-      <div class="auth-member-avatar" style="background:var(--tyler)">Ty</div>
-      <div class="auth-member-name">Tyler</div>
-    </div>
+<div id="auth">
+  <div class="alogo">Family<span>Sync</span></div>
+  <div class="atag">Your family calendar, beautifully organised</div>
+  <div class="aavs">
+    <div class="aav"><div class="aac" style="background:var(--rudi)">R</div><div class="aan">RUDI</div></div>
+    <div class="aav"><div class="aac" style="background:var(--tesha)">T</div><div class="aan">TESHA</div></div>
+    <div class="aav"><div class="aac" style="background:var(--cassie)">C</div><div class="aan">CASSIE</div></div>
+    <div class="aav"><div class="aac" style="background:var(--tyler)">Ty</div><div class="aan">TYLER</div></div>
   </div>
-
-  <button class="google-btn" onclick="App.signInWithGoogle()">
-    <svg class="google-logo" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
+  <button class="gbtn" id="gbtn">
+    <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Continue with Google
   </button>
+  <button class="dbtn" id="dbtn">Try Demo Mode — no sign-in needed</button>
+</div>
 
-  <div class="auth-demo">
-    No Google setup yet? <button onclick="try{App.demoMode()}catch(e){console.error(e);document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').classList.remove('hidden');}">Try demo mode</button>
+<div id="app" class="hidden">
+  <div id="topbar">
+    <div class="logo">Family<span>Sync</span></div>
+    <div id="tb-month"></div>
+    <button class="tb-btn" id="todaybtn">⊙</button>
+  </div>
+  <div id="vtabs">
+    <div class="vtab on" data-v="month">Month</div>
+    <div class="vtab" data-v="week">Week</div>
+    <div class="vtab" data-v="day">Day</div>
+  </div>
+  <div id="main">
+    <div id="month-view">
+      <div class="mnav"><button id="prevM">&#8249;</button><span id="mlbl"></span><button id="nextM">&#8250;</button></div>
+      <div class="wdh"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+      <div class="mgrid" id="mgrid"></div>
+    </div>
+    <div id="week-view" class="hidden">
+      <div class="wkhdr" id="wkhdr"><div class="wkdh"></div></div>
+      <div class="wkbody" id="wkbody"><div class="wktcol" id="wktcol"></div></div>
+    </div>
+    <div id="day-view" class="hidden">
+      <div class="dhdr"><div class="dhdr-date" id="dhdrdate"></div></div>
+      <div class="dstrip" id="dstrip"></div>
+      <div class="elist" id="elist"></div>
+    </div>
+    <div id="settings-view">
+      <div class="svhdr">Settings</div>
+      <div class="svsec"><div class="svst">Google Calendar</div>
+        <div id="gcbanner"></div>
+        <div class="svcard">
+          <div class="svrow" id="gcrow"><span class="svi">📅</span><div class="svb"><div class="svl">Google Calendar</div><div class="svs" id="gcstat">Not connected</div></div><span style="color:var(--t3)">›</span></div>
+          <div class="svrow"><span class="svi">🔄</span><div class="svb"><div class="svl">Auto-sync new events</div><div class="svs">Push events to Google Calendar</div></div><div class="tog on" id="stog"></div></div>
+        </div>
+      </div>
+      <div class="svsec"><div class="svst">Family Members</div><div class="svcard" id="famlist"></div></div>
+      <div class="svsec"><div class="svst">Notifications</div>
+        <div class="svcard">
+          <div class="svrow"><span class="svi">☀️</span><div class="svb"><div class="svl">Daily morning summary</div><div class="svs">7:30 am every day</div></div><div class="tog on" id="dtog"></div></div>
+          <div class="svrow"><span class="svi">🔔</span><div class="svb"><div class="svl">Event reminders</div><div class="svs">As set on each event</div></div><div class="tog on" id="rtog"></div></div>
+        </div>
+      </div>
+      <div class="svsec"><div class="svst">Account</div>
+        <div class="svcard">
+          <div class="svrow"><span class="svi">👤</span><div class="svb"><div class="svl" id="sname">—</div><div class="svs" id="semail">—</div></div></div>
+          <div class="svrow" id="sorow"><span class="svi">🚪</span><div class="svb"><div class="svl" style="color:#dc2626">Sign out</div></div></div>
+        </div>
+      </div>
+      <div style="height:20px"></div>
+    </div>
+  </div>
+  <div id="bnav">
+    <div class="nit on" data-n="cal"><span class="nico">📅</span><span>Calendar</span></div>
+    <div class="nfab"><button class="fab" id="fab">+</button></div>
+    <div class="nit" data-n="set"><span class="nico">⚙️</span><span>Settings</span></div>
   </div>
 </div>
 
-<!-- ═══════════════ APP SHELL ═══════════════ -->
-<div id="app" class="hidden">
-
-  <!-- Top Bar -->
-  <div id="topbar">
-    <div class="logo">Family<span>Sync</span></div>
-    <div class="topbar-center">
-      <div class="topbar-month" id="topbar-month">May 2026</div>
-    </div>
-    <div class="topbar-actions">
-      <button class="icon-btn" onclick="App.goToday()" title="Today">⊙</button>
-      <button class="icon-btn" id="user-avatar-btn" onclick="App.showSettings()" title="Settings">👤</button>
-    </div>
-  </div>
-
-  <!-- View Tabs -->
-  <div id="view-tabs">
-    <div class="view-tab active" data-view="month" onclick="App.switchView('month')">Month</div>
-    <div class="view-tab" data-view="week" onclick="App.switchView('week')">Week</div>
-    <div class="view-tab" data-view="day" onclick="App.switchView('day')">Day</div>
-  </div>
-
-  <!-- Main Content -->
-  <div id="main">
-
-    <!-- Month View -->
-    <div id="month-view" class="active">
-      <div class="month-nav">
-        <button onclick="App.prevMonth()">‹</button>
-        <span style="font-family:var(--serif);font-size:16px;font-weight:500" id="month-label"></span>
-        <button onclick="App.nextMonth()">›</button>
-      </div>
-      <div class="weekday-header">
-        <span>S</span><span>M</span><span>T</span><span>W</span>
-        <span>T</span><span>F</span><span>S</span>
-      </div>
-      <div class="month-grid" id="month-grid"></div>
-    </div>
-
-    <!-- Week View -->
-    <div id="week-view">
-      <div class="week-days-header" id="week-header"></div>
-      <div class="week-grid" id="week-grid"></div>
-    </div>
-
-    <!-- Day View -->
-    <div id="day-view">
-      <div class="day-header">
-        <div class="day-header-date" id="day-header-date"></div>
-        <div class="day-header-sub" id="day-header-sub"></div>
-      </div>
-      <div class="day-strip" id="day-strip"></div>
-      <div class="events-list" id="events-list"></div>
-    </div>
-
-    <!-- Settings View -->
-    <div id="settings-view">
-      <div class="settings-header">
-        <div class="settings-title">Settings</div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Google Calendar</div>
-        <div id="gcal-status-area"></div>
-        <div class="settings-card">
-          <div class="settings-row" onclick="App.connectGoogleCalendar()">
-            <span class="settings-row-icon">📅</span>
-            <div class="settings-row-body">
-              <div class="settings-row-label">Google Calendar</div>
-              <div class="settings-row-sub" id="gcal-connection-status">Tap to connect</div>
-            </div>
-            <span style="color:var(--text3);font-size:18px">›</span>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-icon">🔄</span>
-            <div class="settings-row-body">
-              <div class="settings-row-label">Auto-sync events</div>
-              <div class="settings-row-sub">Push new events to Google Calendar</div>
-            </div>
-            <div class="toggle on" id="sync-toggle" onclick="App.toggleSetting('autoSync', this)"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Family Members</div>
-        <div class="settings-card" id="family-members-list"></div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Notifications</div>
-        <div class="settings-card">
-          <div class="settings-row">
-            <span class="settings-row-icon">☀️</span>
-            <div class="settings-row-body">
-              <div class="settings-row-label">Daily morning summary</div>
-              <div class="settings-row-sub">7:30 am every day</div>
-            </div>
-            <div class="toggle on" onclick="App.toggleSetting('dailySummary', this)"></div>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-icon">🔔</span>
-            <div class="settings-row-body">
-              <div class="settings-row-label">Event reminders</div>
-              <div class="settings-row-sub">As set on each event</div>
-            </div>
-            <div class="toggle on" onclick="App.toggleSetting('eventReminders', this)"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">My Account</div>
-        <div class="settings-card">
-          <div class="settings-row" id="current-user-row">
-            <span class="settings-row-icon">👤</span>
-            <div class="settings-row-body">
-              <div class="settings-row-label" id="current-user-name">—</div>
-              <div class="settings-row-sub" id="current-user-email">Not signed in</div>
-            </div>
-          </div>
-          <div class="settings-row" onclick="App.signOut()" style="cursor:pointer">
-            <span class="settings-row-icon">🚪</span>
-            <div class="settings-row-body">
-              <div class="settings-row-label" style="color:#dc2626">Sign out</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="height:20px"></div>
-    </div>
-
-  </div><!-- /main -->
-
-  <!-- Bottom Nav -->
-  <div id="bottom-nav">
-    <div class="nav-item active" data-nav="calendar" onclick="App.switchNav('calendar')">
-      <span class="nav-icon">📅</span>
-      <span>Calendar</span>
-    </div>
-    <div class="nav-fab" id="fab-container">
-      <button class="fab-btn" id="fab-btn" onclick="App.openNewEvent()" title="New event">+</button>
-    </div>
-    <div class="nav-item" data-nav="settings" onclick="App.switchNav('settings')">
-      <span class="nav-icon">⚙️</span>
-      <span>Settings</span>
-    </div>
-  </div>
-
-</div><!-- /app -->
-
-<!-- ═══════════════ EVENT CREATION MODAL ═══════════════ -->
-<div class="modal-overlay" id="event-modal">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <div class="modal-title" id="event-modal-title">New Event</div>
-      <button class="modal-close" onclick="App.closeModal('event-modal')">✕</button>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Event Title</label>
-      <input type="text" class="form-input" id="ev-title" placeholder="e.g. Cassie's school play"/>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Color</label>
-      <div class="color-picker" id="color-picker">
-        <div class="color-swatch selected" data-color="#2d6a4f" style="background:#2d6a4f" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#1d6fb5" style="background:#1d6fb5" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#7c3aed" style="background:#7c3aed" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#d97706" style="background:#d97706" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#dc2626" style="background:#dc2626" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#db2777" style="background:#db2777" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#0891b2" style="background:#0891b2" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#ea580c" style="background:#ea580c" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#059669" style="background:#059669" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#4f46e5" style="background:#4f46e5" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#be185d" style="background:#be185d" onclick="App.selectColor(this)"></div>
-        <div class="color-swatch" data-color="#b45309" style="background:#b45309" onclick="App.selectColor(this)"></div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <div class="form-row">
-        <div>
-          <label class="form-label">Date</label>
-          <input type="date" class="form-input" id="ev-date"/>
-        </div>
-        <div>
-          <label class="form-label">All day</label>
-          <select class="form-input" id="ev-allday" onchange="App.toggleAllDay()">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-section" id="time-section">
-      <div class="form-row">
-        <div>
-          <label class="form-label">Start time</label>
-          <input type="time" class="form-input" id="ev-start"/>
-        </div>
-        <div>
-          <label class="form-label">End time</label>
-          <input type="time" class="form-input" id="ev-end"/>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Family members</label>
-      <div class="participant-chips" id="participant-chips">
-        <div class="participant-chip selected" data-id="rudi" style="border-color:#2d6a4f;background:#2d6a4f" onclick="App.toggleParticipant(this)">
-          <div class="chip-avatar" style="background:rgba(255,255,255,0.3)">R</div>
-          Rudi
-        </div>
-        <div class="participant-chip" data-id="tesha" onclick="App.toggleParticipant(this)">
-          <div class="chip-avatar" style="background:var(--tesha)">T</div>
-          Tesha
-        </div>
-        <div class="participant-chip" data-id="cassie" onclick="App.toggleParticipant(this)">
-          <div class="chip-avatar" style="background:var(--cassie)">C</div>
-          Cassie
-        </div>
-        <div class="participant-chip" data-id="tyler" onclick="App.toggleParticipant(this)">
-          <div class="chip-avatar" style="background:var(--tyler)">Ty</div>
-          Tyler
-        </div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Location</label>
-      <input type="text" class="form-input" id="ev-location" placeholder="e.g. Harrison College Main Hall"/>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Recurrence</label>
-      <div class="recurrence-select">
-        <div class="recurrence-opt selected" data-rrule="" onclick="App.selectRecurrence(this)">None</div>
-        <div class="recurrence-opt" data-rrule="FREQ=DAILY" onclick="App.selectRecurrence(this)">Daily</div>
-        <div class="recurrence-opt" data-rrule="FREQ=WEEKLY" onclick="App.selectRecurrence(this)">Weekly</div>
-        <div class="recurrence-opt" data-rrule="FREQ=MONTHLY" onclick="App.selectRecurrence(this)">Monthly</div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Reminders</label>
-      <div class="reminder-options">
-        <div class="reminder-tag" data-mins="0" onclick="App.toggleReminder(this)">At time</div>
-        <div class="reminder-tag" data-mins="-15" onclick="App.toggleReminder(this)">15 min</div>
-        <div class="reminder-tag selected" data-mins="-60" onclick="App.toggleReminder(this)">1 hour</div>
-        <div class="reminder-tag" data-mins="-1440" onclick="App.toggleReminder(this)">1 day</div>
-        <div class="reminder-tag" data-mins="-10080" onclick="App.toggleReminder(this)">1 week</div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <label class="form-label">Notes</label>
-      <textarea class="form-input" id="ev-notes" placeholder="Any additional details..."></textarea>
-    </div>
-
-    <button class="btn-primary" id="save-event-btn" onclick="App.saveEvent()">Save Event</button>
+<div class="overlay" id="evmod">
+  <div class="sheet">
+    <div class="shdl"></div>
+    <div class="shhdr"><div class="shtit" id="evmodtit">New Event</div><button class="shcls" onclick="CM('evmod')">✕</button></div>
+    <div class="fsec"><label class="flbl">Title</label><input type="text" class="finp" id="ft" placeholder="e.g. Cassie's school play"/></div>
+    <div class="fsec"><label class="flbl">Colour</label><div class="cpkr" id="cpkr"></div></div>
+    <div class="fsec"><div class="frow"><div><label class="flbl">Date</label><input type="date" class="finp" id="fd"/></div><div><label class="flbl">All day?</label><select class="finp" id="fad"><option value="no">No</option><option value="yes">Yes</option></select></div></div></div>
+    <div class="fsec" id="ftimes"><div class="frow"><div><label class="flbl">Start</label><input type="time" class="finp" id="fs"/></div><div><label class="flbl">End</label><input type="time" class="finp" id="fe"/></div></div></div>
+    <div class="fsec"><label class="flbl">Family members</label><div class="pchips" id="pchips"></div></div>
+    <div class="fsec"><label class="flbl">Location</label><input type="text" class="finp" id="fl" placeholder="e.g. Harrison College"/></div>
+    <div class="fsec"><label class="flbl">Repeat</label><div class="rropts" id="rropts"></div></div>
+    <div class="fsec"><label class="flbl">Reminder</label><div class="rtags" id="rtags"></div></div>
+    <div class="fsec"><label class="flbl">Notes</label><textarea class="finp" id="fn" placeholder="Any extra details..."></textarea></div>
+    <button class="savebtn" id="savebtn">Save Event</button>
     <div style="height:8px"></div>
   </div>
 </div>
 
-<!-- ═══════════════ EVENT DETAIL MODAL ═══════════════ -->
-<div class="modal-overlay" id="detail-modal">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div id="event-detail-content"></div>
-  </div>
+<div class="overlay" id="detmod">
+  <div class="sheet"><div class="shdl"></div><div id="detcon"></div></div>
 </div>
 
-<!-- ═══════════════ TOAST ═══════════════ -->
 <div id="toast"></div>
 
 <script>
-/* ═══════════════════════════════════════════════════════
-   FAMILYSYNC APP
-═══════════════════════════════════════════════════════ */
+var GCID='YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+var GAPIKEY='YOUR_GOOGLE_API_KEY';
+var GSCOPE='https://www.googleapis.com/auth/calendar';
+var CALNAME='FamilySync';
 
-// ── Configuration ──────────────────────────────────────
-// IMPORTANT: Replace this with your own Google OAuth Client ID
-// from https://console.cloud.google.com
-// Enable: Google Calendar API
-// OAuth consent screen: add your domain
-// Credentials: Web application, add your GitHub Pages URL to Authorized origins
-const CONFIG = {
-  GOOGLE_CLIENT_ID: '861642868717-pnt69qjsjcfibqlcm1kdgv006afhl3tb.apps.googleusercontent.com',
-  GCAL_API_KEY: 'AIzaSyD7IjheoCZ2GmGD-_heJwewuvQGIWJ4h3k',
-  CALENDAR_ID: 'primary',
-  FAMILY_CALENDAR_NAME: 'FamilySync',
-  SCOPES: 'https://www.googleapis.com/auth/calendar',
-};
-
-const FAMILY = [
-  { id: 'rudi',   name: 'Rudi',   initials: 'R',  color: '#2d6a4f', role: 'owner'   },
-  { id: 'tesha',  name: 'Tesha',  initials: 'T',  color: '#7c3aed', role: 'owner'   },
-  { id: 'cassie', name: 'Cassie', initials: 'C',  color: '#d97706', role: 'viewer'  },
-  { id: 'tyler',  name: 'Tyler',  initials: 'Ty', color: '#1d6fb5', role: 'viewer'  },
+var FAM=[
+  {id:'rudi',name:'Rudi',init:'R',color:'#2d6a4f',role:'owner'},
+  {id:'tesha',name:'Tesha',init:'T',color:'#7c3aed',role:'owner'},
+  {id:'cassie',name:'Cassie',init:'C',color:'#d97706',role:'viewer'},
+  {id:'tyler',name:'Tyler',init:'Ty',color:'#1d6fb5',role:'viewer'},
 ];
+var COLS=['#2d6a4f','#1d6fb5','#7c3aed','#d97706','#dc2626','#db2777','#0891b2','#ea580c','#059669','#4f46e5','#be185d','#b45309'];
+var RROPTS=[{l:'None',v:''},{l:'Daily',v:'FREQ=DAILY'},{l:'Weekly',v:'FREQ=WEEKLY'},{l:'Monthly',v:'FREQ=MONTHLY'}];
+var REMS=[{l:'At time',m:0},{l:'15 min',m:-15},{l:'1 hour',m:-60},{l:'1 day',m:-1440},{l:'1 week',m:-10080}];
 
-// ── State ───────────────────────────────────────────────
-const State = {
-  currentUser: null,
-  isDemo: false,
-  gapi: null,
-  tokenClient: null,
-  isSignedIn: false,
-  calendarId: null,
-  view: 'month',
-  navSection: 'calendar',
-  currentDate: new Date(),
-  selectedDate: new Date(),
-  events: [],
-  editingEvent: null,
-  selectedColor: '#2d6a4f',
-  selectedParticipants: ['rudi'],
-  selectedReminders: [-60],
-  selectedRrule: '',
-  settings: {
-    autoSync: true,
-    dailySummary: true,
-    eventReminders: true,
-  },
-};
+var S={user:null,demo:false,signed:false,gapiObj:null,tc:null,calId:null,view:'day',nav:'cal',cur:new Date(),sel:new Date(),evs:[],eid:null,fc:COLS[0],fp:['rudi'],fr:[-60],frr:''};
 
-// ── Storage helpers ─────────────────────────────────────
-const Store = {
-  save(key, val) { try { localStorage.setItem('fs_' + key, JSON.stringify(val)); } catch(e){} },
-  load(key, def) { try { const v = localStorage.getItem('fs_' + key); return v ? JSON.parse(v) : def; } catch(e){ return def; } },
-};
+function LS(k,v){if(v===undefined){try{var r=localStorage.getItem('fs_'+k);return r?JSON.parse(r):null}catch(e){return null}}else{try{localStorage.setItem('fs_'+k,JSON.stringify(v))}catch(e){}}}
+function el(id){return document.getElementById(id)}
+function isoD(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function pad(n){return String(n).padStart(2,'0')}
+function sd(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()}
+function itd(d){return sd(d,new Date())}
+function dim(y,m){return new Date(y,m+1,0).getDate()}
+function sdy(d){return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]}
+function ftm(d){if(!d)return'';var dt=d instanceof Date?d:new Date(d);return dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}
+function fdt(d){var dt=d instanceof Date?d:new Date(d);return dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
 
-// ── Date utilities ──────────────────────────────────────
-const DateUtil = {
-  fmt(d, opts) { return d.toLocaleDateString('en-US', opts); },
-  fmtTime(d) { return d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}); },
-  isSameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); },
-  isToday(d) { return DateUtil.isSameDay(d, new Date()); },
-  daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); },
-  startOfMonth(y, m) { return new Date(y, m, 1); },
-  toISO(d) { return d.toISOString().split('T')[0]; },
-  monthName(d) { return d.toLocaleDateString('en-US', {month:'long', year:'numeric'}); },
-  dayName(d) { return d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}); },
-  shortDay(d) { return d.toLocaleDateString('en-US', {weekday:'short'}); },
-};
+function toast(msg,dur){
+  dur=dur||2800;
+  var t=el('toast');t.textContent=msg;t.classList.add('on');
+  clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('on')},dur);
+}
+function OM(id){el(id).classList.add('open')}
+function CM(id){el(id).classList.remove('open')}
 
-// ── Google Calendar API ─────────────────────────────────
-const GCal = {
-  _initPromise: null,
-
-  loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  },
-
-  async init() {
-    if (CONFIG.GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-      return false;
+function evsForDate(date){
+  var iso=isoD(date);
+  return S.evs.filter(function(ev){
+    if(ev.date===iso)return true;
+    if(ev.rrule&&ev.date){
+      var start=new Date(ev.date+'T00:00:00');
+      if(date<start)return false;
+      var diff=Math.round((date-start)/86400000);
+      if(ev.rrule.indexOf('DAILY')>-1)return diff>=0;
+      if(ev.rrule.indexOf('WEEKLY')>-1)return diff%7===0;
+      if(ev.rrule.indexOf('MONTHLY')>-1)return(new Date(ev.date+'T00:00:00')).getDate()===date.getDate();
     }
-    if (GCal._initPromise) return GCal._initPromise;
-    GCal._initPromise = (async () => {
-      try {
-        // Load both scripts in parallel
-        await Promise.all([
-          GCal.loadScript('https://apis.google.com/js/api.js'),
-          GCal.loadScript('https://accounts.google.com/gsi/client'),
-        ]);
-
-        // Init gapi client
-        await new Promise((resolve, reject) => {
-          gapi.load('client', { callback: resolve, onerror: reject });
-        });
-        await gapi.client.init({
-          apiKey: CONFIG.GCAL_API_KEY,
-          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-        });
-        State.gapi = gapi;
-
-        // Init token client
-        State.tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: CONFIG.GOOGLE_CLIENT_ID,
-          scope: CONFIG.SCOPES,
-          callback: async (response) => {
-            if (response.error) {
-              console.error('OAuth error:', response);
-              App.showToast('Google sign-in failed: ' + response.error);
-              return;
-            }
-            State.isSignedIn = true;
-            await GCal.onSignedIn(response);
-          },
-        });
-
-        return true;
-      } catch(e) {
-        console.error('GCal init error:', e);
-        GCal._initPromise = null; // allow retry
-        return false;
-      }
-    })();
-    return GCal._initPromise;
-  },
-
-  requestToken() {
-    if (State.tokenClient) {
-      State.tokenClient.requestAccessToken({ prompt: '' });
-    } else {
-      App.showToast('Google not ready yet, please try again');
-    }
-  },
-
-  async onSignedIn(tokenResponse) {
-    // Get Google user info
-    if (!State.currentUser) {
-      try {
-        const resp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
-        });
-        const info = await resp.json();
-        State.currentUser = {
-          name: info.name || 'Family Member',
-          email: info.email || '',
-          role: 'owner',
-          isDemo: false,
-        };
-      } catch(e) {
-        State.currentUser = { name: 'Rudi', email: '', role: 'owner', isDemo: false };
-      }
-      Store.save('user', State.currentUser);
-    }
-    App.showApp();
-    App.showToast('Connected to Google Calendar ✓');
-    await GCal.ensureFamilySyncCalendar();
-    await GCal.fetchEvents();
-    App.renderAll();
-  },
-
-  async ensureFamilySyncCalendar() {
-    try {
-      const res = await gapi.client.calendar.calendarList.list();
-      const cals = res.result.items || [];
-      let cal = cals.find(c => c.summary === CONFIG.FAMILY_CALENDAR_NAME);
-      if (!cal) {
-        const created = await gapi.client.calendar.calendars.insert({
-          resource: { summary: CONFIG.FAMILY_CALENDAR_NAME, description: 'Managed by FamilySync', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
-        });
-        cal = created.result;
-      }
-      State.calendarId = cal.id;
-      Store.save('calendarId', cal.id);
-    } catch(e) {
-      console.error('Calendar setup error', e);
-      State.calendarId = 'primary';
-    }
-  },
-
-  async fetchEvents() {
-    if (!State.isSignedIn || !State.gapi) return;
-    try {
-      const calId = State.calendarId || 'primary';
-      const now = new Date();
-      const tMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      const tMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
-
-      const res = await gapi.client.calendar.events.list({
-        calendarId: calId,
-        timeMin: tMin,
-        timeMax: tMax,
-        singleEvents: true,
-        orderBy: 'startTime',
-        maxResults: 500,
-      });
-
-      const items = res.result.items || [];
-      const gcalEvents = items.map(item => ({
-        id: item.id,
-        title: item.summary || '(No title)',
-        date: (item.start.date || item.start.dateTime || '').split('T')[0],
-        startTime: item.start.dateTime ? new Date(item.start.dateTime) : null,
-        endTime: item.end.dateTime ? new Date(item.end.dateTime) : null,
-        allDay: !!item.start.date,
-        color: item.colorId ? GCal.gcalColorMap[item.colorId] : (item.extendedProperties?.private?.fsColor || '#2d6a4f'),
-        location: item.location || '',
-        notes: item.description || '',
-        participants: JSON.parse(item.extendedProperties?.private?.fsParticipants || '["rudi"]'),
-        rrule: item.recurrence ? item.recurrence[0]?.replace('RRULE:','') : '',
-        reminders: JSON.parse(item.extendedProperties?.private?.fsReminders || '[-60]'),
-        source: 'gcal',
-        gcalId: item.id,
-      }));
-
-      // Merge with local events (keep local ones that aren't in gcal)
-      const localEvents = Store.load('events', []).filter(e => !e.gcalId);
-      State.events = [...gcalEvents, ...localEvents];
-      Store.save('events', State.events);
-    } catch(e) {
-      console.error('Fetch events error', e);
-    }
-  },
-
-  gcalColorMap: {
-    '1':'#7986cb','2':'#33b679','3':'#8e24aa','4':'#e67c73',
-    '5':'#f6c026','6':'#f5511d','7':'#039be5','8':'#616161',
-    '9':'#3f51b5','10':'#0b8043','11':'#d60000',
-  },
-
-  colorToGcalId(hex) {
-    const map = {
-      '#2d6a4f':'10','#1d6fb5':'9','#7c3aed':'3','#d97706':'5',
-      '#dc2626':'11','#db2777':'4','#0891b2':'7','#ea580c':'6',
-    };
-    return map[hex] || '1';
-  },
-
-  async createEvent(evData) {
-    if (!State.isSignedIn || !State.gapi) return null;
-    try {
-      const calId = State.calendarId || 'primary';
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      let resource = {
-        summary: evData.title,
-        description: evData.notes || '',
-        location: evData.location || '',
-        colorId: GCal.colorToGcalId(evData.color),
-        extendedProperties: {
-          private: {
-            fsColor: evData.color,
-            fsParticipants: JSON.stringify(evData.participants),
-            fsReminders: JSON.stringify(evData.reminders),
-          }
-        },
-      };
-
-      if (evData.allDay) {
-        resource.start = { date: evData.date };
-        resource.end   = { date: evData.date };
-      } else {
-        const [sh, sm] = evData.startTime.split(':');
-        const [eh, em] = evData.endTime.split(':');
-        const base = new Date(evData.date + 'T00:00:00');
-        const start = new Date(base); start.setHours(+sh, +sm);
-        const end   = new Date(base); end.setHours(+eh, +em);
-        if (end <= start) end.setHours(+eh + 1, +em);
-        resource.start = { dateTime: start.toISOString(), timeZone: tz };
-        resource.end   = { dateTime: end.toISOString(), timeZone: tz };
-      }
-
-      if (evData.rrule) {
-        resource.recurrence = ['RRULE:' + evData.rrule];
-      }
-
-      if (evData.reminders.length > 0) {
-        resource.reminders = {
-          useDefault: false,
-          overrides: evData.reminders.map(m => ({
-            method: 'popup',
-            minutes: Math.abs(m),
-          }))
-        };
-      }
-
-      const res = await gapi.client.calendar.events.insert({
-        calendarId: calId,
-        resource,
-      });
-
-      App.showToast('Synced to Google Calendar ✓');
-      return res.result.id;
-    } catch(e) {
-      console.error('Create event error', e);
-      App.showToast('Saved locally (sync failed)');
-      return null;
-    }
-  },
-
-  async deleteEvent(gcalId) {
-    if (!State.isSignedIn || !State.gapi || !gcalId) return;
-    try {
-      await gapi.client.calendar.events.delete({
-        calendarId: State.calendarId || 'primary',
-        eventId: gcalId,
-      });
-    } catch(e) { console.error('Delete error', e); }
-  },
-};
-
-// ── Main App ────────────────────────────────────────────
-const App = {
-  async init() {
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    }
-
-    // Load saved data
-    State.events = Store.load('events', App.sampleEvents());
-    State.settings = Store.load('settings', State.settings);
-    State.calendarId = Store.load('calendarId', null);
-    State.selectedDate = new Date();
-
-    // Check if already signed in (returning user)
-    const savedUser = Store.load('user', null);
-    if (savedUser) {
-      State.currentUser = savedUser;
-      State.isDemo = savedUser.isDemo || false;
-      App.showApp();
-      // Try to reconnect Google silently in background
-      if (!State.isDemo && CONFIG.GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-        GCal.init().then(ready => {
-          if (ready && State.tokenClient) {
-            // Silent token refresh (no popup)
-            State.tokenClient.requestAccessToken({ prompt: 'none' });
-          }
-        }).catch(() => {});
-      }
-    }
-
-    App.renderAll();
-  },
-
-  async signInWithGoogle() {
-    const btn = document.querySelector('.google-btn');
-    if (btn) { btn.textContent = 'Connecting…'; btn.disabled = true; }
-
-    const ready = await GCal.init();
-
-    if (btn) { btn.innerHTML = `<svg class="google-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Continue with Google`; btn.disabled = false; }
-
-    if (!ready) {
-      App.showToast('⚠️ Google credentials not set up — try Demo Mode');
-      return;
-    }
-    // This opens the Google OAuth popup — onSignedIn callback handles the rest
-    GCal.requestToken();
-  },
-
-  demoMode() {
-    try {
-      State.isDemo = true;
-      State.isSignedIn = false;
-      State.currentUser = { name: 'Rudi', email: 'demo@familysync.app', role: 'owner', isDemo: true };
-      Store.save('user', State.currentUser);
-      State.events = App.sampleEvents();
-      Store.save('events', State.events);
-      State.selectedDate = new Date();
-      State.currentDate = new Date();
-      // Show app
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      // Render
-      App.renderAll();
-      App.setupFABVisibility();
-      App.switchView('day');
-      setTimeout(() => App.showToast('Welcome! Running in demo mode 👋'), 400);
-    } catch(e) {
-      console.error('demoMode error:', e);
-      // Last resort — just show the app div
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-    }
-  },
-
-  showApp() {
-    document.getElementById('auth-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    App.renderAll();
-    App.setupFABVisibility();
-  },
-
-  setupFABVisibility() {
-    const user = State.currentUser;
-    const member = FAMILY.find(m => m.name === user?.name);
-    const isOwner = !member || member.role === 'owner';
-    const fab = document.getElementById('fab-btn');
-    if (fab) fab.style.display = isOwner ? 'flex' : 'none';
-  },
-
-  signOut() {
-    if (confirm('Sign out of FamilySync?')) {
-      Store.save('user', null);
-      State.currentUser = null;
-      State.isSignedIn = false;
-      document.getElementById('app').classList.add('hidden');
-      document.getElementById('auth-screen').classList.remove('hidden');
-    }
-  },
-
-  async connectGoogleCalendar() {
-    if (State.isDemo) {
-      App.showToast('Sign out of demo mode first to connect Google');
-      return;
-    }
-    const ready = await GCal.init();
-    if (!ready) {
-      App.showToast('⚠️ Google credentials not configured — see README');
-      return;
-    }
-    GCal.requestToken();
-  },
-
-  renderAll() {
-    App.updateTopbar();
-    App.renderMonth();
-    App.renderWeek();
-    App.renderDay();
-    App.renderSettings();
-  },
-
-  updateTopbar() {
-    const d = State.currentDate;
-    document.getElementById('topbar-month').textContent = DateUtil.monthName(d);
-  },
-
-  // ── Month View ─────────────────────────────────────────
-  renderMonth() {
-    const d = State.currentDate;
-    const y = d.getFullYear(), m = d.getMonth();
-    document.getElementById('month-label').textContent =
-      d.toLocaleDateString('en-US', {month:'long', year:'numeric'});
-
-    const firstDay = new Date(y, m, 1).getDay();
-    const days = DateUtil.daysInMonth(y, m);
-    const today = new Date();
-    const grid = document.getElementById('month-grid');
-    grid.innerHTML = '';
-
-    // Prev month fill
-    const prevDays = DateUtil.daysInMonth(y, m - 1);
-    for (let i = firstDay - 1; i >= 0; i--) {
-      const day = prevDays - i;
-      const date = new Date(y, m - 1, day);
-      grid.appendChild(App.makeCell(date, true));
-    }
-
-    for (let day = 1; day <= days; day++) {
-      const date = new Date(y, m, day);
-      grid.appendChild(App.makeCell(date, false));
-    }
-
-    // Next month fill
-    const total = firstDay + days;
-    const remaining = 7 - (total % 7 === 0 ? 7 : total % 7);
-    for (let i = 1; i <= remaining; i++) {
-      const date = new Date(y, m + 1, i);
-      grid.appendChild(App.makeCell(date, true));
-    }
-  },
-
-  makeCell(date, otherMonth) {
-    const cell = document.createElement('div');
-    cell.className = 'month-cell' +
-      (otherMonth ? ' other-month' : '') +
-      (DateUtil.isToday(date) ? ' today' : '') +
-      (DateUtil.isSameDay(date, State.selectedDate) && !DateUtil.isToday(date) ? ' selected' : '');
-
-    const dayEvents = App.eventsForDate(date);
-    const numEl = document.createElement('div');
-    numEl.className = 'day-num';
-    numEl.textContent = date.getDate();
-    cell.appendChild(numEl);
-
-    if (dayEvents.length > 0) {
-      const dots = document.createElement('div');
-      dots.className = 'event-dots';
-      dayEvents.slice(0, 3).forEach(ev => {
-        const dot = document.createElement('div');
-        dot.className = 'event-dot';
-        dot.style.background = ev.color;
-        dots.appendChild(dot);
-      });
-      cell.appendChild(dots);
-    }
-
-    cell.onclick = () => {
-      State.selectedDate = date;
-      App.renderMonth();
-      App.renderDay();
-      App.switchView('day');
-    };
-    return cell;
-  },
-
-  // ── Week View ──────────────────────────────────────────
-  renderWeek() {
-    const d = State.currentDate;
-    const startOfWeek = new Date(d);
-    startOfWeek.setDate(d.getDate() - d.getDay());
-
-    const header = document.getElementById('week-header');
-    header.innerHTML = '<div class="week-day-col-header"></div>';
-
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      days.push(day);
-      const col = document.createElement('div');
-      col.className = 'week-day-col-header' + (DateUtil.isToday(day) ? ' today' : '');
-      col.innerHTML = `<span>${DateUtil.shortDay(day).toUpperCase()}</span><span class="wk-date">${day.getDate()}</span>`;
-      col.onclick = () => { State.selectedDate = day; App.renderDay(); App.switchView('day'); };
-      header.appendChild(col);
-    }
-
-    const grid = document.getElementById('week-grid');
-    grid.innerHTML = '';
-
-    // Time column
-    const timeCol = document.createElement('div');
-    timeCol.className = 'week-time-col';
-    for (let h = 0; h < 24; h++) {
-      const slot = document.createElement('div');
-      slot.className = 'week-time-slot';
-      slot.textContent = h === 0 ? '' : (h > 12 ? `${h-12}pm` : `${h}am`);
-      timeCol.appendChild(slot);
-    }
-    grid.appendChild(timeCol);
-
-    days.forEach(day => {
-      const col = document.createElement('div');
-      col.className = 'week-day-col';
-      col.style.position = 'relative';
-
-      for (let h = 0; h < 24; h++) {
-        const row = document.createElement('div');
-        row.className = 'week-hour-row';
-        col.appendChild(row);
-      }
-
-      const dayEvents = App.eventsForDate(day).filter(e => !e.allDay && e.startTime);
-      dayEvents.forEach(ev => {
-        const start = ev.startTime;
-        const end = ev.endTime || new Date(start.getTime() + 60*60*1000);
-        const top = (start.getHours() + start.getMinutes()/60) * 48;
-        const height = Math.max(((end - start) / 3600000) * 48, 20);
-        const block = document.createElement('div');
-        block.className = 'week-event-block';
-        block.style.cssText = `top:${top}px;height:${height}px;background:${ev.color}`;
-        block.textContent = ev.title;
-        block.onclick = () => App.showEventDetail(ev);
-        col.appendChild(block);
-      });
-
-      grid.appendChild(col);
-    });
-  },
-
-  // ── Day View ──────────────────────────────────────────
-  renderDay() {
-    const sel = State.selectedDate;
-    const headerDate = document.getElementById('day-header-date');
-    const headerSub  = document.getElementById('day-header-sub');
-
-    headerDate.innerHTML = `${DateUtil.isToday(sel) ? '<strong>Today</strong>, ' : ''}${sel.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'})}`;
-    headerSub.textContent = sel.toLocaleDateString('en-US', {year:'numeric'});
-
-    // Day strip — 7 days around selected
-    const strip = document.getElementById('day-strip');
-    strip.innerHTML = '';
-    for (let i = -3; i <= 3; i++) {
-      const day = new Date(sel);
-      day.setDate(sel.getDate() + i);
-      const chip = document.createElement('div');
-      chip.className = 'day-chip' +
-        (DateUtil.isToday(day) ? ' today' : '') +
-        (DateUtil.isSameDay(day, sel) ? ' selected' : '');
-      chip.innerHTML = `<span class="chip-wd">${DateUtil.shortDay(day)}</span><span class="chip-d">${day.getDate()}</span>`;
-      chip.onclick = () => {
-        State.selectedDate = day;
-        App.renderDay();
-      };
-      strip.appendChild(chip);
-    }
-
-    // Events
-    const list = document.getElementById('events-list');
-    const dayEvents = App.eventsForDate(sel).sort((a, b) => {
-      if (!a.startTime) return -1;
-      if (!b.startTime) return 1;
-      return a.startTime - b.startTime;
-    });
-
-    if (dayEvents.length === 0) {
-      list.innerHTML = `<div class="no-events"><div class="no-events-icon">📭</div><p>No events this day</p><p style="margin-top:8px;font-size:13px">Tap + to add one</p></div>`;
-      return;
-    }
-
-    list.innerHTML = '';
-    dayEvents.forEach(ev => {
-      const card = document.createElement('div');
-      card.className = 'event-card';
-      card.style.setProperty('--ev-color', ev.color);
-      card.querySelector ? null : null;
-      card.innerHTML = `
-        <style>#_ev_${ev.id.replace(/\W/g,'_')}::before { background: ${ev.color} }</style>
-        <div class="event-time-col">
-          ${ev.allDay ? '<span class="event-time" style="color:var(--text3)">All day</span>' :
-            `<span class="event-time">${ev.startTime ? DateUtil.fmtTime(ev.startTime) : ''}</span>
-             <span class="event-end-time">${ev.endTime ? DateUtil.fmtTime(ev.endTime) : ''}</span>`}
-        </div>
-        <div class="event-body">
-          <div class="event-title">${ev.title}</div>
-          <div class="event-meta">
-            ${ev.location ? `<span>📍 ${ev.location}</span>` : ''}
-            ${ev.rrule ? '<span>🔁 Recurring</span>' : ''}
-          </div>
-          <div class="event-participants">
-            ${(ev.participants || []).map(pid => {
-              const m = FAMILY.find(f => f.id === pid);
-              return m ? `<div class="participant-avatar" style="background:${m.color}">${m.initials}</div>` : '';
-            }).join('')}
-          </div>
-        </div>`;
-      card.style.setProperty('padding-left', '18px');
-      card.style.borderLeft = `4px solid ${ev.color}`;
-      card.onclick = () => App.showEventDetail(ev);
-      list.appendChild(card);
-    });
-  },
-
-  // ── Settings ──────────────────────────────────────────
-  renderSettings() {
-    // Family members list
-    const list = document.getElementById('family-members-list');
-    if (list) {
-      list.innerHTML = FAMILY.map(m => `
-        <div class="member-row">
-          <div class="member-avatar-lg" style="background:${m.color}">${m.initials}</div>
-          <div class="member-info">
-            <div class="member-name">${m.name}</div>
-            <div class="member-role">${m.role === 'owner' ? 'Can create & edit events' : 'Can view events & receive reminders'}</div>
-          </div>
-          <span class="member-badge ${m.role === 'owner' ? 'badge-owner' : 'badge-viewer'}">
-            ${m.role === 'owner' ? 'Owner' : 'Viewer'}
-          </span>
-        </div>`).join('');
-    }
-
-    // Current user
-    const user = State.currentUser;
-    if (user) {
-      const el = document.getElementById('current-user-name');
-      const email = document.getElementById('current-user-email');
-      if (el) el.textContent = user.name || 'Family Member';
-      if (email) email.textContent = user.email || '';
-    }
-
-    // GCal status
-    const statusEl = document.getElementById('gcal-status-area');
-    const connStatus = document.getElementById('gcal-connection-status');
-    if (State.isSignedIn && statusEl) {
-      statusEl.innerHTML = `<div class="gcal-status"><div class="dot"></div>Connected to Google Calendar</div>`;
-      if (connStatus) connStatus.textContent = 'Connected — tap to manage';
-    } else if (State.isDemo && statusEl) {
-      statusEl.innerHTML = `<div class="gcal-setup-banner">📋 Demo mode — events are stored locally only.<button onclick="App.showToast('Sign in with Google to sync')">Learn more</button></div>`;
-    }
-  },
-
-  // ── Navigation ────────────────────────────────────────
-  switchView(view) {
-    State.view = view;
-    document.querySelectorAll('#month-view,#week-view,#day-view').forEach(el => el.classList.remove('active'));
-    document.getElementById(view + '-view').classList.add('active');
-    document.querySelectorAll('.view-tab').forEach(t => {
-      t.classList.toggle('active', t.dataset.view === view);
-    });
-    App.updateTopbar();
-  },
-
-  switchNav(section) {
-    State.navSection = section;
-    document.querySelectorAll('.nav-item').forEach(n => {
-      n.classList.toggle('active', n.dataset.nav === section);
-    });
-
-    const calViews = document.getElementById('view-tabs');
-    const fabContainer = document.getElementById('fab-container');
-
-    if (section === 'settings') {
-      document.querySelectorAll('#month-view,#week-view,#day-view').forEach(e => e.classList.remove('active'));
-      document.getElementById('settings-view').classList.add('active');
-      if (calViews) calViews.style.display = 'none';
-      if (fabContainer) fabContainer.style.visibility = 'hidden';
-      App.renderSettings();
-    } else {
-      document.getElementById('settings-view').classList.remove('active');
-      if (calViews) calViews.style.display = 'flex';
-      if (fabContainer) fabContainer.style.visibility = 'visible';
-      App.switchView(State.view === 'month' || State.view === 'week' || State.view === 'day' ? State.view : 'month');
-    }
-  },
-
-  prevMonth() {
-    State.currentDate = new Date(State.currentDate.getFullYear(), State.currentDate.getMonth() - 1, 1);
-    App.renderMonth();
-    App.updateTopbar();
-  },
-
-  nextMonth() {
-    State.currentDate = new Date(State.currentDate.getFullYear(), State.currentDate.getMonth() + 1, 1);
-    App.renderMonth();
-    App.updateTopbar();
-  },
-
-  goToday() {
-    State.currentDate = new Date();
-    State.selectedDate = new Date();
-    App.renderAll();
-    App.switchView('day');
-  },
-
-  // ── Event Creation ────────────────────────────────────
-  openNewEvent() {
-    const user = State.currentUser;
-    const member = FAMILY.find(m => m.name === user?.name);
-    if (member && member.role !== 'owner') {
-      App.showToast('Only Rudi & Tesha can create events');
-      return;
-    }
-
-    State.editingEvent = null;
-    State.selectedColor = '#2d6a4f';
-    State.selectedParticipants = ['rudi'];
-    State.selectedReminders = [-60];
-    State.selectedRrule = '';
-
-    // Reset form
-    document.getElementById('ev-title').value = '';
-    document.getElementById('ev-date').value = DateUtil.toISO(State.selectedDate);
-    document.getElementById('ev-start').value = '09:00';
-    document.getElementById('ev-end').value = '10:00';
-    document.getElementById('ev-location').value = '';
-    document.getElementById('ev-notes').value = '';
-    document.getElementById('ev-allday').value = 'no';
-    document.getElementById('event-modal-title').textContent = 'New Event';
-
-    // Reset color
-    document.querySelectorAll('.color-swatch').forEach(s => {
-      s.classList.toggle('selected', s.dataset.color === '#2d6a4f');
-    });
-    // Reset participants
-    document.querySelectorAll('.participant-chip').forEach(c => {
-      App.applyChipState(c, c.dataset.id === 'rudi');
-    });
-    // Reset reminders
-    document.querySelectorAll('.reminder-tag').forEach(t => {
-      t.classList.toggle('selected', t.dataset.mins === '-60');
-    });
-    // Reset recurrence
-    document.querySelectorAll('.recurrence-opt').forEach(o => {
-      o.classList.toggle('selected', o.dataset.rrule === '');
-    });
-
-    App.openModal('event-modal');
-  },
-
-  openEditEvent(ev) {
-    const user = State.currentUser;
-    const member = FAMILY.find(m => m.name === user?.name);
-    if (member && member.role !== 'owner') {
-      App.showToast('Only Rudi & Tesha can edit events');
-      return;
-    }
-
-    State.editingEvent = ev;
-    State.selectedColor = ev.color;
-    State.selectedParticipants = [...(ev.participants || ['rudi'])];
-    State.selectedReminders = [...(ev.reminders || [-60])];
-    State.selectedRrule = ev.rrule || '';
-
-    document.getElementById('ev-title').value = ev.title;
-    document.getElementById('ev-date').value = ev.date;
-    document.getElementById('ev-start').value = ev.startTime ? `${String(ev.startTime.getHours()).padStart(2,'0')}:${String(ev.startTime.getMinutes()).padStart(2,'0')}` : '09:00';
-    document.getElementById('ev-end').value = ev.endTime ? `${String(ev.endTime.getHours()).padStart(2,'0')}:${String(ev.endTime.getMinutes()).padStart(2,'0')}` : '10:00';
-    document.getElementById('ev-location').value = ev.location || '';
-    document.getElementById('ev-notes').value = ev.notes || '';
-    document.getElementById('ev-allday').value = ev.allDay ? 'yes' : 'no';
-    document.getElementById('event-modal-title').textContent = 'Edit Event';
-
-    document.querySelectorAll('.color-swatch').forEach(s => {
-      s.classList.toggle('selected', s.dataset.color === ev.color);
-    });
-    document.querySelectorAll('.participant-chip').forEach(c => {
-      App.applyChipState(c, State.selectedParticipants.includes(c.dataset.id));
-    });
-    document.querySelectorAll('.reminder-tag').forEach(t => {
-      t.classList.toggle('selected', State.selectedReminders.includes(+t.dataset.mins));
-    });
-    document.querySelectorAll('.recurrence-opt').forEach(o => {
-      o.classList.toggle('selected', o.dataset.rrule === State.selectedRrule);
-    });
-
-    App.toggleAllDay();
-    App.closeModal('detail-modal');
-    App.openModal('event-modal');
-  },
-
-  applyChipState(chip, selected) {
-    const pid = chip.dataset.id;
-    const member = FAMILY.find(m => m.id === pid);
-    chip.classList.toggle('selected', selected);
-    if (selected && member) {
-      chip.style.background = member.color;
-      chip.style.borderColor = member.color;
-      chip.style.color = '#fff';
-    } else {
-      chip.style.background = '';
-      chip.style.borderColor = '';
-      chip.style.color = '';
-    }
-  },
-
-  selectColor(el) {
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-    el.classList.add('selected');
-    State.selectedColor = el.dataset.color;
-  },
-
-  toggleParticipant(el) {
-    const id = el.dataset.id;
-    const idx = State.selectedParticipants.indexOf(id);
-    if (idx === -1) {
-      State.selectedParticipants.push(id);
-      App.applyChipState(el, true);
-    } else {
-      State.selectedParticipants.splice(idx, 1);
-      App.applyChipState(el, false);
-    }
-  },
-
-  toggleReminder(el) {
-    const mins = +el.dataset.mins;
-    const idx = State.selectedReminders.indexOf(mins);
-    if (idx === -1) { State.selectedReminders.push(mins); el.classList.add('selected'); }
-    else { State.selectedReminders.splice(idx, 1); el.classList.remove('selected'); }
-  },
-
-  selectRecurrence(el) {
-    document.querySelectorAll('.recurrence-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    State.selectedRrule = el.dataset.rrule;
-  },
-
-  toggleAllDay() {
-    const isAllDay = document.getElementById('ev-allday').value === 'yes';
-    document.getElementById('time-section').style.display = isAllDay ? 'none' : 'block';
-  },
-
-  async saveEvent() {
-    const title = document.getElementById('ev-title').value.trim();
-    if (!title) { App.showToast('Please enter an event title'); return; }
-
-    const date = document.getElementById('ev-date').value;
-    if (!date) { App.showToast('Please select a date'); return; }
-
-    const allDay = document.getElementById('ev-allday').value === 'yes';
-    const startT = document.getElementById('ev-start').value;
-    const endT   = document.getElementById('ev-end').value;
-
-    let startTime = null, endTime = null;
-    if (!allDay && date) {
-      startTime = new Date(date + 'T' + (startT || '09:00') + ':00');
-      endTime   = new Date(date + 'T' + (endT   || '10:00') + ':00');
-    }
-
-    const evData = {
-      id: State.editingEvent?.id || ('ev_' + Date.now()),
-      title,
-      date,
-      startTime,
-      endTime,
-      allDay,
-      startTime_str: startT,
-      endTime_str: endT,
-      color: State.selectedColor,
-      participants: [...State.selectedParticipants],
-      location: document.getElementById('ev-location').value.trim(),
-      notes: document.getElementById('ev-notes').value.trim(),
-      rrule: State.selectedRrule,
-      reminders: [...State.selectedReminders],
-      createdAt: State.editingEvent?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const btn = document.getElementById('save-event-btn');
-    btn.disabled = true;
-    btn.textContent = 'Saving…';
-
-    // Remove old event
-    State.events = State.events.filter(e => e.id !== evData.id);
-
-    // Sync to Google Calendar
-    if (State.isSignedIn && State.settings.autoSync) {
-      if (State.editingEvent?.gcalId) {
-        await GCal.deleteEvent(State.editingEvent.gcalId);
-      }
-      const gcalId = await GCal.createEvent({
-        ...evData,
-        startTime: startT,
-        endTime: endT,
-      });
-      if (gcalId) evData.gcalId = gcalId;
-    }
-
-    State.events.push(evData);
-    Store.save('events', State.events);
-
-    btn.disabled = false;
-    btn.textContent = 'Save Event';
-
-    App.closeModal('event-modal');
-    App.showToast(State.editingEvent ? 'Event updated ✓' : 'Event created ✓');
-    App.renderAll();
-  },
-
-  async deleteEvent(ev) {
-    if (!confirm(`Delete "${ev.title}"?`)) return;
-    if (ev.gcalId) await GCal.deleteEvent(ev.gcalId);
-    State.events = State.events.filter(e => e.id !== ev.id);
-    Store.save('events', State.events);
-    App.closeModal('detail-modal');
-    App.showToast('Event deleted');
-    App.renderAll();
-  },
-
-  // ── Event Detail ──────────────────────────────────────
-  showEventDetail(ev) {
-    const user = State.currentUser;
-    const member = FAMILY.find(m => m.name === user?.name);
-    const isOwner = !member || member.role === 'owner';
-
-    const content = document.getElementById('event-detail-content');
-    const participants = (ev.participants || []).map(pid => {
-      const m = FAMILY.find(f => f.id === pid);
-      return m ? `<div class="participant-avatar" style="background:${m.color};width:32px;height:32px;font-size:12px">${m.initials}</div> ${m.name}` : '';
-    }).join(' · ');
-
-    const reminderLabels = {0:'At time',-15:'15 min before',-60:'1 hour before',-1440:'1 day before',-10080:'1 week before'};
-    const reminderText = (ev.reminders || []).map(r => reminderLabels[r] || `${Math.abs(r)} min before`).join(', ') || 'None';
-
-    content.innerHTML = `
-      <div class="event-detail-banner" style="background:${ev.color}">
-        <div class="event-detail-title">${ev.title}</div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-icon">📅</div>
-        <div class="detail-content">
-          <div class="detail-label">Date & Time</div>
-          <div class="detail-value">
-            <strong>${new Date(ev.date).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</strong>
-            ${!ev.allDay && ev.startTime ? `<br>${DateUtil.fmtTime(ev.startTime)}${ev.endTime ? ' – ' + DateUtil.fmtTime(ev.endTime) : ''}` : '<br>All day'}
-          </div>
-        </div>
-      </div>
-      ${ev.location ? `
-      <div class="detail-row">
-        <div class="detail-icon">📍</div>
-        <div class="detail-content">
-          <div class="detail-label">Location</div>
-          <div class="detail-value"><strong>${ev.location}</strong></div>
-        </div>
-      </div>` : ''}
-      <div class="detail-row">
-        <div class="detail-icon">👥</div>
-        <div class="detail-content">
-          <div class="detail-label">Family Members</div>
-          <div class="detail-value" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${(ev.participants || []).map(pid => {
-              const m = FAMILY.find(f => f.id === pid);
-              return m ? `<span style="display:flex;align-items:center;gap:4px"><span style="width:24px;height:24px;border-radius:50%;background:${m.color};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">${m.initials}</span>${m.name}</span>` : '';
-            }).join('')}
-          </div>
-        </div>
-      </div>
-      ${ev.rrule ? `
-      <div class="detail-row">
-        <div class="detail-icon">🔁</div>
-        <div class="detail-content">
-          <div class="detail-label">Recurrence</div>
-          <div class="detail-value">${App.rruleText(ev.rrule)}</div>
-        </div>
-      </div>` : ''}
-      <div class="detail-row">
-        <div class="detail-icon">🔔</div>
-        <div class="detail-content">
-          <div class="detail-label">Reminders</div>
-          <div class="detail-value">${reminderText}</div>
-        </div>
-      </div>
-      ${ev.notes ? `
-      <div class="detail-row">
-        <div class="detail-icon">📝</div>
-        <div class="detail-content">
-          <div class="detail-label">Notes</div>
-          <div class="detail-value">${ev.notes}</div>
-        </div>
-      </div>` : ''}
-      ${isOwner ? `
-      <div style="display:flex;gap:10px;padding:16px 20px">
-        <button onclick="App.openEditEvent(App.findEvent('${ev.id}'))" style="flex:1;padding:12px;background:var(--bg2);border-radius:10px;font-size:14px;font-weight:600;color:var(--text)">Edit</button>
-        <button onclick="App.deleteEvent(App.findEvent('${ev.id}'))" style="flex:1;padding:12px;background:#fee2e2;border-radius:10px;font-size:14px;font-weight:600;color:#dc2626">Delete</button>
-      </div>` : ''}
-    `;
-    App.openModal('detail-modal');
-  },
-
-  findEvent(id) { return State.events.find(e => e.id === id); },
-
-  rruleText(rrule) {
-    if (!rrule) return 'None';
-    if (rrule.includes('DAILY')) return 'Every day';
-    if (rrule.includes('WEEKLY')) return 'Every week';
-    if (rrule.includes('MONTHLY')) return 'Every month';
-    return rrule;
-  },
-
-  // ── Settings actions ──────────────────────────────────
-  toggleSetting(key, el) {
-    State.settings[key] = !State.settings[key];
-    el.classList.toggle('on', State.settings[key]);
-    Store.save('settings', State.settings);
-  },
-
-  // ── Modal helpers ─────────────────────────────────────
-  openModal(id) {
-    document.getElementById(id).classList.add('open');
-  },
-  closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-  },
-
-  // ── Toast ─────────────────────────────────────────────
-  showToast(msg, dur = 2500) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(App._toastTimer);
-    App._toastTimer = setTimeout(() => t.classList.remove('show'), dur);
-  },
-
-  // ── Helpers ───────────────────────────────────────────
-  eventsForDate(date) {
-    const iso = DateUtil.toISO(date);
-    return State.events.filter(ev => {
-      if (ev.date === iso) return true;
-      // Basic recurring check
-      if (ev.rrule && ev.date) {
-        const start = new Date(ev.date);
-        if (date < start) return false;
-        const diff = Math.round((date - start) / 86400000);
-        if (ev.rrule.includes('DAILY')) return diff % 1 === 0;
-        if (ev.rrule.includes('WEEKLY')) return diff % 7 === 0 && new Date(ev.date).getDay() === date.getDay();
-        if (ev.rrule.includes('MONTHLY')) return new Date(ev.date).getDate() === date.getDate();
-      }
-      return false;
-    });
-  },
-
-  showSettings() { App.switchNav('settings'); },
-
-  // ── Sample events ─────────────────────────────────────
-  sampleEvents() {
-    const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth();
-    const fmt = (d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-
-    return [
-      {
-        id: 'ev_sample_1',
-        title: "School drop-off",
-        date: fmt(now.getDate()),
-        startTime: new Date(y, m, now.getDate(), 8, 15),
-        endTime:   new Date(y, m, now.getDate(), 8, 45),
-        allDay: false,
-        color: '#1d6fb5',
-        participants: ['rudi','cassie','tyler'],
-        location: 'Harrison College',
-        notes: '',
-        rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
-        reminders: [-30],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'ev_sample_2',
-        title: "Cassie's School Play",
-        date: fmt(now.getDate() + 3),
-        startTime: new Date(y, m, now.getDate() + 3, 18, 30),
-        endTime:   new Date(y, m, now.getDate() + 3, 20, 0),
-        allDay: false,
-        color: '#d97706',
-        participants: ['rudi','tesha','cassie'],
-        location: 'Harrison College Main Hall',
-        notes: 'Main hall — Year 9 drama performance',
-        rrule: '',
-        reminders: [-60, -1440],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'ev_sample_3',
-        title: "Tyler's Football Practice",
-        date: fmt(now.getDate() + 1),
-        startTime: new Date(y, m, now.getDate() + 1, 16, 0),
-        endTime:   new Date(y, m, now.getDate() + 1, 17, 30),
-        allDay: false,
-        color: '#1d6fb5',
-        participants: ['tyler','rudi'],
-        location: 'National Stadium, Bridgetown',
-        notes: '',
-        rrule: 'FREQ=WEEKLY;BYDAY=TU,TH',
-        reminders: [-60],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'ev_sample_4',
-        title: "Dentist — Cassie & Tyler",
-        date: fmt(now.getDate() + 5),
-        startTime: new Date(y, m, now.getDate() + 5, 14, 0),
-        endTime:   new Date(y, m, now.getDate() + 5, 15, 0),
-        allDay: false,
-        color: '#dc2626',
-        participants: ['tesha','cassie','tyler'],
-        location: 'Bay Street Clinic',
-        notes: '',
-        rrule: '',
-        reminders: [-60, -1440],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'ev_sample_5',
-        title: "Family Dinner",
-        date: fmt(now.getDate() + 2),
-        startTime: new Date(y, m, now.getDate() + 2, 19, 0),
-        endTime:   new Date(y, m, now.getDate() + 2, 21, 0),
-        allDay: false,
-        color: '#2d6a4f',
-        participants: ['rudi','tesha','cassie','tyler'],
-        location: 'Home',
-        notes: "Tesha's cooking — everyone must be home by 7pm",
-        rrule: '',
-        reminders: [-60],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-  },
-};
-
-// ── Close modals on overlay click ──────────────────────
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) App.closeModal(overlay.id);
-  });
-});
-
-// ── Global error handler — show friendly message ────────
-window.onerror = function(msg, src, line, col, err) {
-  console.error('FamilySync error:', msg, 'line:', line, err);
-  const toast = document.getElementById('toast');
-  if (toast) {
-    toast.textContent = '⚠️ Something went wrong — ' + msg;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 5000);
-  }
-  return false;
-};
-window.onunhandledrejection = function(e) {
-  console.error('Unhandled promise rejection:', e.reason);
-};
-
-// ── Init ────────────────────────────────────────────────
-try {
-  App.init();
-} catch(e) {
-  console.error('Init failed:', e);
-  // Fallback: at minimum make demo button work
-  document.querySelector('[onclick="App.demoMode()"]')?.addEventListener('click', () => {
-    location.reload();
+    return false;
   });
 }
+
+function renderAll(){
+  el('tb-month').textContent=S.cur.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  renderMonth();renderWeek();renderDay();renderSet();setupFAB();
+}
+
+function renderMonth(){
+  var y=S.cur.getFullYear(),m=S.cur.getMonth();
+  el('mlbl').textContent=S.cur.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  var g=el('mgrid');g.innerHTML='';
+  var fd=new Date(y,m,1).getDay(),days=dim(y,m),pd=dim(y,m-1);
+  for(var i=fd-1;i>=0;i--)g.appendChild(mkCell(new Date(y,m-1,pd-i),true));
+  for(var d=1;d<=days;d++)g.appendChild(mkCell(new Date(y,m,d),false));
+  var tot=fd+days,rem=7-(tot%7===0?7:tot%7);
+  for(var j=1;j<=rem&&rem<7;j++)g.appendChild(mkCell(new Date(y,m+1,j),true));
+}
+
+function mkCell(date,other){
+  var cell=document.createElement('div');
+  var evs=evsForDate(date);
+  var cls='mcell'+(other?' other':'')+(itd(date)?' today':'')+(sd(date,S.sel)&&!itd(date)?' sel':'');
+  cell.className=cls;
+  cell.innerHTML='<div class="dn">'+date.getDate()+'</div><div class="edots">'+evs.slice(0,3).map(function(e){return'<div class="edot" style="background:'+e.color+'"></div>'}).join('')+'</div>';
+  cell.onclick=function(){S.sel=date;S.cur=new Date(date);renderAll();sv('day')};
+  return cell;
+}
+
+function renderWeek(){
+  var start=new Date(S.cur);start.setDate(S.cur.getDate()-S.cur.getDay());
+  var days=[];for(var i=0;i<7;i++){var d=new Date(start);d.setDate(start.getDate()+i);days.push(d);}
+  var hdr=el('wkhdr');hdr.innerHTML='<div class="wkdh"></div>';
+  days.forEach(function(d){
+    var c=document.createElement('div');c.className='wkdh'+(itd(d)?' today':'');
+    c.innerHTML=sdy(d).toUpperCase()+'<span class="wkdd">'+d.getDate()+'</span>';
+    c.onclick=function(){S.sel=d;renderAll();sv('day')};hdr.appendChild(c);
+  });
+  var body=el('wkbody');body.innerHTML='';
+  var tc=document.createElement('div');tc.className='wktcol';
+  for(var h=0;h<24;h++){var s=document.createElement('div');s.className='wkts';s.textContent=h===0?'':(h>12?(h-12)+'pm':h+'am');tc.appendChild(s);}
+  body.appendChild(tc);
+  days.forEach(function(d){
+    var col=document.createElement('div');col.className='wkdc';col.style.position='relative';
+    for(var h=0;h<24;h++){var r=document.createElement('div');r.className='wkhr';col.appendChild(r);}
+    evsForDate(d).filter(function(e){return!e.allDay&&e.startTime}).forEach(function(ev){
+      var st=new Date(ev.startTime);var en=ev.endTime?new Date(ev.endTime):new Date(st.getTime()+3600000);
+      var top=(st.getHours()+st.getMinutes()/60)*48;var ht=Math.max(((en-st)/3600000)*48,18);
+      var b=document.createElement('div');b.className='wkev';b.style.cssText='top:'+top+'px;height:'+ht+'px;background:'+ev.color;
+      b.textContent=ev.title;b.onclick=function(){showDet(ev)};col.appendChild(b);
+    });
+    body.appendChild(col);
+  });
+}
+
+function renderDay(){
+  var d=S.sel;
+  var tl=itd(d)?'<span class="tl">Today, </span>':'';
+  el('dhdrdate').innerHTML=tl+d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  var strip=el('dstrip');strip.innerHTML='';
+  for(var i=-3;i<=3;i++){
+    var day=new Date(d);day.setDate(d.getDate()+i);
+    var chip=document.createElement('div');
+    chip.className='dchip'+(itd(day)?' today':'')+(sd(day,d)?' sel':'');
+    chip.innerHTML='<span class="cwd">'+sdy(day)+'</span><span class="cd">'+day.getDate()+'</span>';
+    (function(dd){chip.onclick=function(){S.sel=dd;renderDay()}})(day);
+    strip.appendChild(chip);
+  }
+  var list=el('elist');list.innerHTML='';
+  var evs=evsForDate(d).sort(function(a,b){if(!a.startTime)return -1;if(!b.startTime)return 1;return new Date(a.startTime)-new Date(b.startTime)});
+  if(!evs.length){list.innerHTML='<div class="noev"><div class="neico">📭</div><p style="font-size:15px;margin-bottom:6px">No events today</p><p style="font-size:13px;color:var(--t3)">Tap + to add one</p></div>';return;}
+  evs.forEach(function(ev){
+    var card=document.createElement('div');card.className='ecard';card.style.borderLeftColor=ev.color;
+    var st=ev.startTime?new Date(ev.startTime):null;var en=ev.endTime?new Date(ev.endTime):null;
+    var ph=(ev.pax||[]).map(function(pid){var m=FAM.find(function(f){return f.id===pid});return m?'<div class="pav" style="background:'+m.color+'">'+m.init+'</div>':''}).join('');
+    card.innerHTML='<div class="etcol">'+(ev.allDay?'<span class="et2">All day</span>':st?'<span class="et">'+ftm(st)+'</span>'+(en?'<span class="et2">'+ftm(en)+'</span>':''):'')+'</div><div class="ebody"><div class="etit">'+ev.title+'</div><div class="emeta">'+(ev.location?'<span>📍 '+ev.location+'</span>':'')+(ev.rrule?'<span>🔁</span>':'')+'</div><div class="epax">'+ph+'</div></div>';
+    (function(e){card.onclick=function(){showDet(e)}})(ev);
+    list.appendChild(card);
+  });
+}
+
+function renderSet(){
+  el('famlist').innerHTML=FAM.map(function(m){return'<div class="mrow"><div class="mavlg" style="background:'+m.color+'">'+m.init+'</div><div class="minf"><div class="mn">'+m.name+'</div><div class="mr">'+(m.role==='owner'?'Can create & edit events':'View & receive reminders')+'</div></div><span class="mb '+(m.role==='owner'?'mb-o':'mb-v')+'">'+(m.role==='owner'?'Owner':'Viewer')+'</span></div>'}).join('');
+  if(S.user){el('sname').textContent=S.user.name||'Family Member';el('semail').textContent=S.user.email||'';}
+  el('gcstat').textContent=S.signed?'Connected — tap to manage':'Tap to connect';
+  var gb=el('gcbanner');
+  if(S.signed)gb.innerHTML='<div class="gcok"><div class="dot"></div>Connected to Google Calendar</div>';
+  else if(S.demo)gb.innerHTML='<div style="padding:10px 13px;background:#fff8e6;border:1px solid #f59e0b;border-radius:var(--r2);font-size:13px;color:#92400e;font-weight:600;margin-bottom:12px">📋 Demo mode — events stored locally</div>';
+  else gb.innerHTML='';
+}
+
+function setupFAB(){
+  var m=FAM.find(function(f){return S.user&&f.name===S.user.name});
+  var own=!m||m.role==='owner';
+  el('fab').style.display=own?'flex':'none';
+}
+
+function sv(v){
+  S.view=v;
+  ['month-view','week-view','day-view','settings-view'].forEach(function(id){el(id).classList.add('hidden');el(id).style.display='';});
+  document.querySelectorAll('.vtab').forEach(function(t){t.classList.toggle('on',t.dataset.v===v)});
+  if(v==='settings'){el('settings-view').style.display='block';el('settings-view').classList.remove('hidden');el('vtabs').style.display='none';}
+  else{el(v+'-view').classList.remove('hidden');el('vtabs').style.display='flex';}
+  el('tb-month').textContent=S.cur.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+}
+
+function sn(n){
+  S.nav=n;
+  document.querySelectorAll('.nit').forEach(function(i){i.classList.toggle('on',i.dataset.n===n)});
+  el('fab').parentElement.style.visibility=n==='set'?'hidden':'visible';
+  if(n==='set'){['month-view','week-view','day-view'].forEach(function(id){el(id).classList.add('hidden')});sv('settings');}
+  else{el('settings-view').classList.add('hidden');el('settings-view').style.display='';sv(S.view==='month'||S.view==='week'||S.view==='day'?S.view:'day');}
+}
+
+function showDet(ev){
+  var m=FAM.find(function(f){return S.user&&f.name===S.user.name});var own=!m||m.role==='owner';
+  var rl={0:'At time',-15:'15 min before',-60:'1 hour before',-1440:'1 day before',-10080:'1 week before'};
+  var st=ev.startTime?new Date(ev.startTime):null;var en=ev.endTime?new Date(ev.endTime):null;
+  var px=(ev.pax||[]).map(function(pid){var mb=FAM.find(function(f){return f.id===pid});return mb?'<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;margin-bottom:4px"><span style="width:22px;height:22px;border-radius:50%;background:'+mb.color+';display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">'+mb.init+'</span>'+mb.name+'</span>':''}).join('');
+  var rrt={'':'No repeat','FREQ=DAILY':'Every day','FREQ=WEEKLY':'Every week','FREQ=MONTHLY':'Every month'};
+  var dtStr=fdt(new Date(ev.date+'T00:00:00'));
+  var tmStr=ev.allDay?'<br>All day':st?('<br>'+ftm(st)+(en?' – '+ftm(en):'')):'';
+  el('detcon').innerHTML='<div class="evban" style="background:'+ev.color+'"><div class="evbant">'+ev.title+'</div></div>'
+    +'<div class="drow"><div class="dico">📅</div><div class="dcon"><div class="dlbl">Date &amp; Time</div><div class="dval"><strong>'+dtStr+'</strong>'+tmStr+'</div></div></div>'
+    +(ev.location?'<div class="drow"><div class="dico">📍</div><div class="dcon"><div class="dlbl">Location</div><div class="dval"><strong>'+ev.location+'</strong></div></div></div>':'')
+    +'<div class="drow"><div class="dico">👥</div><div class="dcon"><div class="dlbl">Family Members</div><div class="dval" style="display:flex;flex-wrap:wrap;align-items:center;margin-top:2px">'+px+'</div></div></div>'
+    +(ev.rrule?'<div class="drow"><div class="dico">🔁</div><div class="dcon"><div class="dlbl">Repeat</div><div class="dval">'+(rrt[ev.rrule]||ev.rrule)+'</div></div></div>':'')
+    +'<div class="drow"><div class="dico">🔔</div><div class="dcon"><div class="dlbl">Reminder</div><div class="dval">'+((ev.rem||[]).map(function(r){return rl[r]||Math.abs(r)+' min before'}).join(', ')||'None')+'</div></div></div>'
+    +(ev.notes?'<div class="drow"><div class="dico">📝</div><div class="dcon"><div class="dlbl">Notes</div><div class="dval">'+ev.notes+'</div></div></div>':'')
+    +(own?'<div class="evacts"><button class="evact evedit" onclick="openEdit(\''+ev.id+'\')">Edit</button><button class="evact evdel" onclick="delEv(\''+ev.id+'\')">Delete</button></div>':'');
+  OM('detmod');
+}
+
+function buildForm(){
+  var cp=el('cpkr');cp.innerHTML='';
+  COLS.forEach(function(c){var s=document.createElement('div');s.className='csw'+(c===S.fc?' on':'');s.style.background=c;s.dataset.c=c;s.onclick=function(){document.querySelectorAll('.csw').forEach(function(x){x.classList.remove('on')});s.classList.add('on');S.fc=c};cp.appendChild(s)});
+  var pc=el('pchips');pc.innerHTML='';
+  FAM.forEach(function(m){
+    var ch=document.createElement('div');var on=S.fp.indexOf(m.id)>-1;
+    ch.className='pchip'+(on?' on':'');if(on){ch.style.background=m.color;ch.style.borderColor=m.color;}
+    ch.innerHTML='<div class="pca" style="background:'+(on?'rgba(255,255,255,.3)':m.color)+'">'+m.init+'</div>'+m.name;
+    (function(mb,chip){chip.onclick=function(){var idx=S.fp.indexOf(mb.id);if(idx===-1){S.fp.push(mb.id);chip.classList.add('on');chip.style.background=mb.color;chip.style.borderColor=mb.color;chip.querySelector('.pca').style.background='rgba(255,255,255,.3)';}else{S.fp.splice(idx,1);chip.classList.remove('on');chip.style.background='';chip.style.borderColor='';chip.querySelector('.pca').style.background=mb.color;}}})(m,ch);
+    pc.appendChild(ch);
+  });
+  var ro=el('rropts');ro.innerHTML='';
+  RROPTS.forEach(function(o){var d=document.createElement('div');d.className='rropt'+(o.v===S.frr?' on':'');d.textContent=o.l;d.onclick=function(){document.querySelectorAll('.rropt').forEach(function(x){x.classList.remove('on')});d.classList.add('on');S.frr=o.v};ro.appendChild(d)});
+  var rt=el('rtags');rt.innerHTML='';
+  REMS.forEach(function(o){var t=document.createElement('div');t.className='rtag'+(S.fr.indexOf(o.m)>-1?' on':'');t.textContent=o.l;t.onclick=function(){var idx=S.fr.indexOf(o.m);if(idx===-1){S.fr.push(o.m);t.classList.add('on')}else{S.fr.splice(idx,1);t.classList.remove('on')}};rt.appendChild(t)});
+  el('fad').onchange=function(){el('ftimes').style.display=el('fad').value==='yes'?'none':'block'};
+}
+
+function openNew(){
+  var m=FAM.find(function(f){return S.user&&f.name===S.user.name});
+  if(m&&m.role!=='owner'){toast('Only Rudi & Tesha can create events');return;}
+  S.eid=null;S.fc=COLS[0];S.fp=['rudi'];S.fr=[-60];S.frr='';
+  el('evmodtit').textContent='New Event';el('ft').value='';el('fd').value=isoD(S.sel);
+  el('fs').value='09:00';el('fe').value='10:00';el('fl').value='';el('fn').value='';
+  el('fad').value='no';el('ftimes').style.display='block';
+  buildForm();OM('evmod');
+}
+
+function openEdit(id){
+  var m=FAM.find(function(f){return S.user&&f.name===S.user.name});
+  if(m&&m.role!=='owner'){toast('Only Rudi & Tesha can edit events');return;}
+  var ev=S.evs.find(function(e){return e.id===id});if(!ev)return;
+  CM('detmod');
+  S.eid=id;S.fc=ev.color;S.fp=(ev.pax||['rudi']).slice();S.fr=(ev.rem||[-60]).slice();S.frr=ev.rrule||'';
+  el('evmodtit').textContent='Edit Event';el('ft').value=ev.title;el('fd').value=ev.date;
+  if(ev.startTime){var st=new Date(ev.startTime);el('fs').value=pad(st.getHours())+':'+pad(st.getMinutes())}
+  if(ev.endTime){var en=new Date(ev.endTime);el('fe').value=pad(en.getHours())+':'+pad(en.getMinutes())}
+  el('fl').value=ev.location||'';el('fn').value=ev.notes||'';
+  el('fad').value=ev.allDay?'yes':'no';el('ftimes').style.display=ev.allDay?'none':'block';
+  buildForm();OM('evmod');
+}
+
+function saveEv(){
+  var title=el('ft').value.trim();if(!title){toast('Please enter a title');return;}
+  var date=el('fd').value;if(!date){toast('Please select a date');return;}
+  var allDay=el('fad').value==='yes';
+  var ss=el('fs').value||'09:00',es=el('fe').value||'10:00';
+  var st=null,en=null;
+  if(!allDay){st=new Date(date+'T'+ss+':00');en=new Date(date+'T'+es+':00');if(en<=st)en=new Date(st.getTime()+3600000);}
+  var id=S.eid||('ev'+Date.now()+(Math.random()*1000|0));
+  var ev={id:id,title:title,date:date,allDay:allDay,startTime:st?st.toISOString():null,endTime:en?en.toISOString():null,color:S.fc,pax:S.fp.slice(),location:el('fl').value.trim(),notes:el('fn').value.trim(),rrule:S.frr,rem:S.fr.slice(),createdAt:new Date().toISOString()};
+  var btn=el('savebtn');btn.disabled=true;btn.textContent='Saving…';
+  S.evs=S.evs.filter(function(e){return e.id!==id});
+  if(S.signed){
+    gcCreate(ev).then(function(gcid){if(gcid)ev.gcalId=gcid;S.evs.push(ev);LS('evs',S.evs);btn.disabled=false;btn.textContent='Save Event';CM('evmod');toast(S.eid?'Event updated ✓':'Event saved ✓');renderAll();});
+  } else {
+    S.evs.push(ev);LS('evs',S.evs);btn.disabled=false;btn.textContent='Save Event';CM('evmod');toast(S.eid?'Event updated ✓':'Event saved ✓');renderAll();
+  }
+}
+
+function delEv(id){
+  if(!confirm('Delete this event?'))return;
+  var ev=S.evs.find(function(e){return e.id===id});
+  if(ev&&ev.gcalId&&S.signed)gcDel(ev.gcalId);
+  S.evs=S.evs.filter(function(e){return e.id!==id});LS('evs',S.evs);CM('detmod');toast('Event deleted');renderAll();
+}
+
+/* GOOGLE */
+function ldScript(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
+var gInitP=null;
+function initG(){
+  if(GCID.indexOf('YOUR_GOOGLE')>-1)return Promise.resolve(false);
+  if(gInitP)return gInitP;
+  gInitP=Promise.all([ldScript('https://apis.google.com/js/api.js'),ldScript('https://accounts.google.com/gsi/client')]).then(function(){
+    return new Promise(function(res,rej){gapi.load('client',{callback:res,onerror:rej})});
+  }).then(function(){
+    return gapi.client.init({apiKey:GAPIKEY,discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']});
+  }).then(function(){
+    S.gapiObj=gapi;
+    S.tc=google.accounts.oauth2.initTokenClient({client_id:GCID,scope:GSCOPE,callback:function(resp){
+      if(resp.error){toast('Google error: '+resp.error);return;}
+      S.signed=true;
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+resp.access_token}})
+        .then(function(r){return r.json()}).then(function(info){
+          S.user={name:info.name||'Family Member',email:info.email||'',role:'owner',isDemo:false};
+          LS('user',S.user);showApp();toast('Connected to Google Calendar ✓');
+          gcEnsure().then(function(){return gcFetch()}).then(function(){renderAll()});
+        }).catch(function(){S.user={name:'Family Member',email:'',role:'owner',isDemo:false};LS('user',S.user);showApp();gcEnsure().then(function(){return gcFetch()}).then(function(){renderAll()})});
+    }});
+    return true;
+  }).catch(function(e){console.error('Google init err:',e);gInitP=null;return false});
+  return gInitP;
+}
+function gcEnsure(){
+  return gapi.client.calendar.calendarList.list().then(function(r){
+    var cals=r.result.items||[];var cal=cals.find(function(c){return c.summary===CALNAME});
+    if(cal){S.calId=cal.id;LS('calId',cal.id);return;}
+    return gapi.client.calendar.calendars.insert({resource:{summary:CALNAME,description:'Managed by FamilySync',timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone}}).then(function(cr){S.calId=cr.result.id;LS('calId',cr.result.id)});
+  }).catch(function(e){console.error('gcEnsure err:',e);S.calId='primary'});
+}
+function gcFetch(){
+  if(!S.signed||!S.gapiObj)return Promise.resolve();
+  var now=new Date();
+  var tMin=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
+  var tMax=new Date(now.getFullYear(),now.getMonth()+3,0).toISOString();
+  return gapi.client.calendar.events.list({calendarId:S.calId||'primary',timeMin:tMin,timeMax:tMax,singleEvents:true,orderBy:'startTime',maxResults:500}).then(function(r){
+    var items=r.result.items||[];
+    var gcevs=items.map(function(it){var ep=it.extendedProperties&&it.extendedProperties.private||{};return{id:it.id,title:it.summary||'(No title)',date:(it.start.date||it.start.dateTime||'').split('T')[0],startTime:it.start.dateTime||null,endTime:it.end.dateTime||null,allDay:!!it.start.date,color:ep.fsColor||COLS[0],location:it.location||'',notes:it.description||'',pax:JSON.parse(ep.fsPax||'["rudi"]'),rrule:it.recurrence?it.recurrence[0].replace('RRULE:',''):'',rem:JSON.parse(ep.fsRem||'[-60]'),gcalId:it.id}});
+    var local=S.evs.filter(function(e){return!e.gcalId});
+    S.evs=gcevs.concat(local);LS('evs',S.evs);
+  }).catch(function(e){console.error('gcFetch err:',e)});
+}
+function gcCreate(ev){
+  if(!S.signed||!S.gapiObj)return Promise.resolve(null);
+  var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var res={summary:ev.title,description:ev.notes||'',location:ev.location||'',extendedProperties:{private:{fsColor:ev.color,fsPax:JSON.stringify(ev.pax),fsRem:JSON.stringify(ev.rem)}}};
+  if(ev.allDay){res.start={date:ev.date};res.end={date:ev.date};}
+  else{res.start={dateTime:new Date(ev.startTime).toISOString(),timeZone:tz};res.end={dateTime:new Date(ev.endTime).toISOString(),timeZone:tz};}
+  if(ev.rrule)res.recurrence=['RRULE:'+ev.rrule];
+  if(ev.rem&&ev.rem.length)res.reminders={useDefault:false,overrides:ev.rem.map(function(m){return{method:'popup',minutes:Math.abs(m)}})};
+  return gapi.client.calendar.events.insert({calendarId:S.calId||'primary',resource:res}).then(function(r){return r.result.id}).catch(function(e){console.error('gcCreate err:',e);return null});
+}
+function gcDel(gcid){
+  if(!S.signed||!S.gapiObj||!gcid)return;
+  gapi.client.calendar.events.delete({calendarId:S.calId||'primary',eventId:gcid}).catch(function(e){console.error('gcDel err:',e)});
+}
+
+/* AUTH */
+function showApp(){el('auth').classList.add('hidden');el('app').classList.remove('hidden');sv('day');renderAll()}
+
+el('gbtn').onclick=function(){
+  var btn=el('gbtn');btn.textContent='Connecting…';btn.disabled=true;
+  initG().then(function(ok){
+    btn.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Continue with Google';
+    btn.disabled=false;
+    if(!ok){toast('Google not configured — use Demo Mode');return;}
+    S.tc.requestAccessToken({prompt:'select_account'});
+  });
+};
+
+el('dbtn').onclick=function(){
+  S.demo=true;S.signed=false;
+  S.user={name:'Rudi',email:'demo@familysync.app',role:'owner',isDemo:true};
+  LS('user',S.user);S.evs=sampleEvs();LS('evs',S.evs);
+  showApp();setTimeout(function(){toast('Welcome! Running in demo mode 👋')},300);
+};
+
+el('sorow').onclick=function(){if(!confirm('Sign out?'))return;LS('user',null);S.user=null;S.signed=false;S.demo=false;el('app').classList.add('hidden');el('auth').classList.remove('hidden')};
+el('gcrow').onclick=function(){if(S.demo){toast('Sign out of demo first');return;}initG().then(function(ok){if(!ok){toast('Google credentials not configured');return;}S.tc.requestAccessToken({prompt:'select_account'})})};
+el('stog').onclick=function(){this.classList.toggle('on')};
+el('dtog').onclick=function(){this.classList.toggle('on')};
+el('rtog').onclick=function(){this.classList.toggle('on')};
+document.querySelectorAll('.nit').forEach(function(n){n.onclick=function(){sn(n.dataset.n)}});
+document.querySelectorAll('.vtab').forEach(function(t){t.onclick=function(){sv(t.dataset.v)}});
+el('fab').onclick=openNew;
+el('prevM').onclick=function(){S.cur=new Date(S.cur.getFullYear(),S.cur.getMonth()-1,1);renderAll()};
+el('nextM').onclick=function(){S.cur=new Date(S.cur.getFullYear(),S.cur.getMonth()+1,1);renderAll()};
+el('todaybtn').onclick=function(){S.cur=new Date();S.sel=new Date();renderAll();sv('day')};
+el('savebtn').onclick=saveEv;
+document.querySelectorAll('.overlay').forEach(function(o){o.onclick=function(e){if(e.target===o)CM(o.id)}});
+
+function sampleEvs(){
+  var n=new Date(),y=n.getFullYear(),m=n.getMonth(),d=n.getDate();
+  function fmt(day,h,mn){return new Date(y,m,day,h,mn).toISOString()}
+  function iso(day){return y+'-'+pad(m+1)+'-'+pad(day)}
+  return[
+    {id:'s1',title:'School Drop-off',date:iso(d),startTime:fmt(d,8,15),endTime:fmt(d,8,45),allDay:false,color:'#1d6fb5',pax:['rudi','cassie','tyler'],location:'Harrison College',notes:'',rrule:'FREQ=WEEKLY',rem:[-30],createdAt:new Date().toISOString()},
+    {id:'s2',title:"Cassie's School Play",date:iso(d+3),startTime:fmt(d+3,18,30),endTime:fmt(d+3,20,0),allDay:false,color:'#d97706',pax:['rudi','tesha','cassie'],location:'Harrison College Main Hall',notes:'Year 9 drama performance',rrule:'',rem:[-60,-1440],createdAt:new Date().toISOString()},
+    {id:'s3',title:"Tyler's Football Practice",date:iso(d+1),startTime:fmt(d+1,16,0),endTime:fmt(d+1,17,30),allDay:false,color:'#1d6fb5',pax:['tyler','rudi'],location:'National Stadium, Bridgetown',notes:'',rrule:'FREQ=WEEKLY',rem:[-60],createdAt:new Date().toISOString()},
+    {id:'s4',title:'Dentist — Cassie & Tyler',date:iso(d+5),startTime:fmt(d+5,14,0),endTime:fmt(d+5,15,0),allDay:false,color:'#dc2626',pax:['tesha','cassie','tyler'],location:'Bay Street Clinic',notes:'',rrule:'',rem:[-60,-1440],createdAt:new Date().toISOString()},
+    {id:'s5',title:'Family Dinner',date:iso(d+2),startTime:fmt(d+2,19,0),endTime:fmt(d+2,21,0),allDay:false,color:'#2d6a4f',pax:['rudi','tesha','cassie','tyler'],location:'Home',notes:"Everyone home by 7pm",rrule:'',rem:[-60],createdAt:new Date().toISOString()},
+  ];
+}
+
+/* INIT */
+(function(){
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+  var saved=LS('user');
+  S.evs=LS('evs')||sampleEvs();S.calId=LS('calId')||null;S.cur=new Date();S.sel=new Date();
+  if(saved){
+    S.user=saved;S.demo=saved.isDemo||false;
+    showApp();
+    if(!S.demo&&GCID.indexOf('YOUR_GOOGLE')===-1){
+      initG().then(function(ok){if(ok&&S.tc)S.tc.requestAccessToken({prompt:''})}).catch(function(){});
+    }
+  }
+})();
 </script>
 </body>
 </html>
