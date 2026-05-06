@@ -322,8 +322,8 @@ textarea.finp{resize:none;min-height:70px}
 </div>
 
 <script>
-var GCID = '861642868717-pnt69qjsjcfibqlcm1kdgv006afhl3tb.apps.googleusercontent.com';
-var GAPIKEY = 'AIzaSyD7IjheoCZ2GmGD-_heJwewuvQGIWJ4h3k';
+var GCID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+var GAPIKEY = 'YOUR_GOOGLE_API_KEY';
 var GSCOPE = 'https://www.googleapis.com/auth/calendar';
 var CALNAME = 'FamilySync';
 
@@ -1048,33 +1048,59 @@ function openTodo() {
 function renderTodoStrip() {
   var strip = el('todo-strip');
   var active = TODOS.filter(function(t) { return !t.done; });
-  var all = TODOS;
-  if (all.length === 0) { strip.style.display = 'none'; return; }
+  if (TODOS.length === 0) { strip.style.display = 'none'; return; }
   strip.style.display = 'block';
-  strip.innerHTML = '<div class="todo-strip-title">&#10003; TO-DO (' + active.length + ' remaining)</div>'
-    + all.map(function(t) {
-      return '<div class="todo-strip-item">'
-        + '<div class="todo-cb ' + (t.done ? 'done' : '') + '" onclick="toggleTodo('' + t.id + '')"></div>'
-        + '<span class="todo-text ' + (t.done ? 'done' : '') + '">' + t.text + '</span>'
-        + '<button class="todo-del" onclick="deleteTodo('' + t.id + '')">&#x2715;</button>'
-        + '</div>';
-    }).join('');
+  strip.innerHTML = '';
+  var title = document.createElement('div');
+  title.className = 'todo-strip-title';
+  title.textContent = '\u2713 TO-DO (' + active.length + ' remaining)';
+  strip.appendChild(title);
+  TODOS.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'todo-strip-item';
+    var cb = document.createElement('div');
+    cb.className = 'todo-cb' + (t.done ? ' done' : '');
+    cb.onclick = (function(id) { return function() { toggleTodo(id); }; })(t.id);
+    var txt = document.createElement('span');
+    txt.className = 'todo-text' + (t.done ? ' done' : '');
+    txt.textContent = t.text;
+    var del = document.createElement('button');
+    del.className = 'todo-del';
+    del.innerHTML = '&#x2715;';
+    del.onclick = (function(id) { return function() { deleteTodo(id); }; })(t.id);
+    row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
+    strip.appendChild(row);
+  });
 }
 
 function renderTodoModal() {
   var list = el('todo-list-modal');
   if (!list) return;
+  list.innerHTML = '';
   if (TODOS.length === 0) {
-    list.innerHTML = '<div class="todo-empty">No to-dos yet — add one above!</div>';
+    var emp = document.createElement('div');
+    emp.className = 'todo-empty';
+    emp.textContent = 'No to-dos yet — add one above!';
+    list.appendChild(emp);
     return;
   }
-  list.innerHTML = TODOS.map(function(t) {
-    return '<div class="todo-modal-item">'
-      + '<div class="todo-cb ' + (t.done ? 'done' : '') + '" onclick="toggleTodo('' + t.id + '')"></div>'
-      + '<span class="todo-text ' + (t.done ? 'done' : '') + '" style="flex:1">' + t.text + '</span>'
-      + '<button class="todo-del" onclick="deleteTodo('' + t.id + '')">&#x2715;</button>'
-      + '</div>';
-  }).join('');
+  TODOS.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'todo-modal-item';
+    var cb = document.createElement('div');
+    cb.className = 'todo-cb' + (t.done ? ' done' : '');
+    cb.onclick = (function(id) { return function() { toggleTodo(id); }; })(t.id);
+    var txt = document.createElement('span');
+    txt.className = 'todo-text' + (t.done ? ' done' : '');
+    txt.style.flex = '1';
+    txt.textContent = t.text;
+    var del = document.createElement('button');
+    del.className = 'todo-del';
+    del.innerHTML = '&#x2715;';
+    del.onclick = (function(id) { return function() { deleteTodo(id); }; })(t.id);
+    row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
+    list.appendChild(row);
+  });
 }
 
 /* ── ENTER KEY for todo input ── */
