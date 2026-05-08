@@ -249,12 +249,18 @@ textarea.finp{resize:none;min-height:70px}
     </div>
     <div id="settings-view">
       <div class="svhdr">Settings</div>
-      <div class="svsec"><div class="svst">Google Calendar</div>
+      <div class="svsec"><div class="svst">Google Calendar Sync</div>
         <div id="gcbanner"></div>
         <div class="svcard">
-          <div class="svrow" id="gcrow"><span class="svi">&#128197;</span><div class="svb"><div class="svl">Google Calendar</div><div class="svs" id="gcstat">Not connected</div></div><span style="color:var(--t3)">&#8250;</span></div>
-          <div class="svrow"><span class="svi">&#128260;</span><div class="svb"><div class="svl">Auto-sync new events</div><div class="svs">Push events to Google Calendar</div></div><div class="tog on" id="stog"></div></div>
+          <div class="svrow" id="gcrow"><span class="svi">&#128197;</span><div class="svb"><div class="svl">Google Account</div><div class="svs" id="gcstat">Not connected</div></div><span style="color:var(--t3)">&#8250;</span></div>
+          <div class="svrow" id="syncnowrow" style="display:none"><span class="svi">&#128260;</span><div class="svb"><div class="svl">Sync Now</div><div class="svs" id="lastsync">Tap to refresh events</div></div><span style="color:var(--green)">&#8250;</span></div>
+          <div class="svrow" onclick="openWhoAmI()" style="cursor:pointer"><span class="svi">&#128100;</span><div class="svb"><div class="svl">Who am I?</div><div class="svs" id="whoami-text">Tap to set your family role</div></div><span style="color:var(--t3)">&#8250;</span></div>
         </div>
+      </div>
+      <div class="svsec" id="family-emails-section" style="display:none">
+        <div class="svst">Family Email Setup <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(owners only)</span></div>
+        <div class="svcard" id="family-emails-card"></div>
+        <div style="font-size:12px;color:var(--t3);margin-top:6px;line-height:1.5">Set each family member's Google email so events sync to the right person and roles are assigned correctly.</div>
       </div>
       <div class="svsec"><div class="svst">Family Members</div><div class="svcard" id="famlist"></div></div>
       <div class="svsec"><div class="svst">Notifications</div>
@@ -567,25 +573,86 @@ function renderDay() {
 }
 
 function renderSet() {
+  // Family members list
   el('famlist').innerHTML = FAM.map(function(m) {
+    var email = lsGet('email_' + m.id) || '';
     return '<div class="mrow"><div class="mavlg" style="background:' + m.color + '">' + m.init + '</div>'
       + '<div class="minf"><div class="mn">' + m.name + '</div><div class="mr">'
-      + (m.role === 'owner' ? 'Can create &amp; edit events' : 'View &amp; receive reminders')
+      + (email ? email : (m.role === 'owner' ? 'Can create &amp; edit events' : 'View &amp; receive reminders'))
       + '</div></div><span class="mb ' + (m.role === 'owner' ? 'mb-o' : 'mb-v') + '">'
       + (m.role === 'owner' ? 'Owner' : 'Viewer') + '</span></div>';
   }).join('');
+
+  // Account info
   if (S.user) {
     el('sname').textContent = S.user.name || 'Family Member';
     el('semail').textContent = S.user.email || '';
   }
-  el('gcstat').textContent = S.signed ? 'Connected — tap to manage' : 'Tap to connect';
-  var gb = el('gcbanner');
+
+  // GCal status
   if (S.signed) {
-    gb.innerHTML = '<div class="gcok"><div class="dot"></div>Connected to Google Calendar</div>';
+    el('gcstat').textContent = 'Connected as ' + (S.user ? S.user.email : '');
+    el('syncnowrow').style.display = 'flex';
+    var gb = el('gcbanner');
+    gb.innerHTML = '<div class="gcok"><div class="dot"></div>Syncing with Google Calendar every 30s</div>';
+    // Last sync time
+    var ls = lsGet('lastSync');
+    if (ls) el('lastsync').textContent = 'Last synced: ' + new Date(ls).toLocaleTimeString();
+    // Who am I
+    var matched = FAM.find(function(f) { return S.user && lsGet('email_' + f.id) === S.user.email; });
+    el('whoami-text').textContent = matched ? (matched.name + ' (' + matched.role + ')') : 'Tap to set your family role';
   } else if (S.demo) {
-    gb.innerHTML = '<div style="padding:10px 13px;background:#fff8e6;border:1px solid #f59e0b;border-radius:var(--r2);font-size:13px;color:#92400e;font-weight:600;margin-bottom:12px">Demo mode — events stored locally</div>';
+    el('gcstat').textContent = 'Demo mode — not connected';
+    el('syncnowrow').style.display = 'none';
+    el('gcbanner').innerHTML = '<div style="padding:10px 13px;background:#fff8e6;border:1px solid #f59e0b;border-radius:var(--r2);font-size:13px;color:#92400e;font-weight:600;margin-bottom:12px">&#128203; Demo mode — events stored locally only. Sign in with Google to sync with family.</div>';
+    el('whoami-text').textContent = 'Rudi (demo)';
   } else {
-    gb.innerHTML = '';
+    el('gcstat').textContent = 'Tap to connect';
+    el('syncnowrow').style.display = 'none';
+    el('gcbanner').innerHTML = '';
+    el('whoami-text').textContent = 'Connect Google first';
+  }
+
+  // Family emails section (owners only)
+  var member = FAM.find(function(f) { return S.user && f.name === S.user.name; });
+  var isOwner = !member || member.role === 'owner';
+  var emailSection = el('family-emails-section');
+  if (emailSection) emailSection.style.display = (S.signed && isOwner) ? 'block' : 'none';
+
+  var emailCard = el('family-emails-card');
+  if (emailCard && isOwner) {
+    emailCard.innerHTML = '';
+    FAM.forEach(function(m) {
+      var saved = lsGet('email_' + m.id) || '';
+      var row = document.createElement('div');
+      row.className = 'svrow';
+      row.style.flexDirection = 'column';
+      row.style.alignItems = 'flex-start';
+      row.style.gap = '6px';
+      var lbl = document.createElement('div');
+      lbl.className = 'svb';
+      lbl.innerHTML = '<div class="svl" style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:50%;background:' + m.color + ';display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff">' + m.init + '</span>' + m.name + '</div>';
+      var inp = document.createElement('input');
+      inp.type = 'email';
+      inp.className = 'finp';
+      inp.style.marginTop = '4px';
+      inp.placeholder = m.name + '@gmail.com';
+      inp.value = saved;
+      inp.onchange = (function(id) { return function() { lsSet('email_' + id, this.value.trim()); }; })(m.id);
+      row.appendChild(lbl);
+      row.appendChild(inp);
+      emailCard.appendChild(row);
+    });
+    // Share button
+    var shareRow = document.createElement('div');
+    shareRow.className = 'svrow';
+    shareRow.innerHTML = '<span class="svi">&#128279;</span><div class="svb"><div class="svl">Share Calendar with Family</div><div class="svs">Sends access invites to all emails above</div></div>';
+    shareRow.style.cursor = 'pointer';
+    shareRow.onclick = function() {
+      if (!S.calId || S.calId === 'primary') { toast('Connect Google Calendar first'); return; }
+      gcShareCalendar(S.calId).then(function() { toast('Invites sent to family members'); });
+    };
+    emailCard.appendChild(shareRow);
   }
 }
 
@@ -858,16 +925,34 @@ function initG() {
         fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:'Bearer ' + resp.access_token}})
           .then(function(r) { return r.json(); })
           .then(function(info) {
-            S.user = {name:info.name||'Family Member', email:info.email||'', role:'owner', isDemo:false};
+            // Match Google account to family member by email
+            var matched = FAM.find(function(f) {
+              return lsGet('email_' + f.id) === info.email;
+            });
+            var role = matched ? matched.role : 'owner';
+            var name = matched ? matched.name : (info.name || 'Family Member');
+            S.user = {name:name, email:info.email||'', role:role, isDemo:false};
             lsSet('user', S.user);
+            // Save email for this user for future matching
+            if (matched) lsSet('email_' + matched.id, info.email);
             showApp();
-            toast('Connected to Google Calendar');
-            gcEnsure().then(function() { return gcFetch(); }).then(function() { renderAll(); });
+            toast('Signed in as ' + name);
+            gcEnsure().then(function() {
+              return gcFetch();
+            }).then(function() {
+              renderAll();
+              startGcalPolling();
+            });
           }).catch(function() {
             S.user = {name:'Family Member', email:'', role:'owner', isDemo:false};
             lsSet('user', S.user);
             showApp();
-            gcEnsure().then(function() { return gcFetch(); }).then(function() { renderAll(); });
+            gcEnsure().then(function() {
+              return gcFetch();
+            }).then(function() {
+              renderAll();
+              startGcalPolling();
+            });
           });
       }
     });
@@ -881,43 +966,141 @@ function initG() {
 }
 
 function gcEnsure() {
+  // Check if we already have a saved shared calendar ID
+  var saved = lsGet('sharedCalId');
+  if (saved) { S.calId = saved; return Promise.resolve(); }
+
   return gapi.client.calendar.calendarList.list().then(function(r) {
     var cals = r.result.items || [];
-    var cal = cals.find(function(c) { return c.summary === CALNAME; });
-    if (cal) { S.calId = cal.id; lsSet('calId', cal.id); return; }
-    return gapi.client.calendar.calendars.insert({resource:{summary:CALNAME, description:'Managed by FamilySync', timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone}})
-      .then(function(cr) { S.calId = cr.result.id; lsSet('calId', cr.result.id); });
+    // Look for FamilySync calendar in their list (shared or owned)
+    var cal = cals.find(function(c) {
+      return c.summary === CALNAME;
+    });
+    if (cal) {
+      S.calId = cal.id;
+      lsSet('calId', cal.id);
+      lsSet('sharedCalId', cal.id);
+      return;
+    }
+    // Not found — if owner, create it and share with family
+    var member = FAM.find(function(f) { return S.user && f.name === S.user.name; });
+    var isOwner = !member || member.role === 'owner';
+    if (isOwner) {
+      return gapi.client.calendar.calendars.insert({
+        resource: {
+          summary: CALNAME,
+          description: 'Shared FamilySync Calendar — do not delete',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      }).then(function(cr) {
+        S.calId = cr.result.id;
+        lsSet('calId', cr.result.id);
+        lsSet('sharedCalId', cr.result.id);
+        // Make it accessible by sharing with all family emails
+        return gcShareCalendar(cr.result.id);
+      });
+    } else {
+      // Viewer — calendar not in their list yet, use primary and show warning
+      toast('Ask Rudi or Tesha to share the FamilySync calendar with you');
+      S.calId = 'primary';
+    }
   }).catch(function(e) { console.error('gcEnsure error:', e); S.calId = 'primary'; });
+}
+
+function gcShareCalendar(calId) {
+  // Share calendar with all family emails stored in settings
+  var emails = lsGet('familyEmails') || [];
+  var promises = emails.map(function(email) {
+    return gapi.client.calendar.acl.insert({
+      calendarId: calId,
+      resource: { role: 'writer', scope: { type: 'user', value: email } }
+    }).catch(function(e) { console.warn('Share error for ' + email + ':', e); });
+  });
+  return Promise.all(promises);
 }
 
 function gcFetch() {
   if (!S.signed || !S.gapiObj) return Promise.resolve();
   var now = new Date();
-  var tMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  var tMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
+  var tMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
+  var tMax = new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString();
   return gapi.client.calendar.events.list({
     calendarId: S.calId || 'primary',
     timeMin: tMin, timeMax: tMax,
-    singleEvents: true, orderBy: 'startTime', maxResults: 500
+    singleEvents: true, orderBy: 'startTime', maxResults: 500,
+    showDeleted: false
   }).then(function(r) {
     var items = r.result.items || [];
-    var gcevs = items.map(function(it) {
+    // Separate todos from regular events
+    var todoItems = items.filter(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      return ep.fsType === 'todo';
+    });
+    var eventItems = items.filter(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      return ep.fsType !== 'todo';
+    });
+    // Process todos
+    var gcTodos = todoItems.map(function(it) {
       var ep = (it.extendedProperties && it.extendedProperties.private) || {};
       return {
-        id:it.id, title:it.summary||'(No title)',
-        date:(it.start.date||it.start.dateTime||'').split('T')[0],
-        startTime:it.start.dateTime||null, endTime:it.end.dateTime||null,
-        allDay:!!it.start.date,
-        color:ep.fsColor||COLS[0], location:it.location||'', notes:it.description||'',
-        pax:JSON.parse(ep.fsPax||'["rudi"]'),
-        rrule:it.recurrence?it.recurrence[0].replace('RRULE:',''):'',
-        rem:JSON.parse(ep.fsRem||'[-60]'), gcalId:it.id
+        id: it.id,
+        text: it.summary || '',
+        done: ep.fsDone === 'true',
+        createdAt: it.created || new Date().toISOString(),
+        gcalId: it.id
       };
     });
-    var local = S.evs.filter(function(e) { return !e.gcalId; });
-    S.evs = gcevs.concat(local);
+    var localOnlyTodos = TODOS.filter(function(t) { return !t.gcalId; });
+    TODOS = gcTodos.concat(localOnlyTodos);
+    saveTodos();
+    // Process regular events
+    var gcevs = eventItems.map(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      var paxRaw = ep.fsPax || '["rudi"]';
+      var remRaw = ep.fsRem || '[-60]';
+      var pax = ['rudi'], rem = [-60];
+      try { pax = JSON.parse(paxRaw); } catch(e) {}
+      try { rem = JSON.parse(remRaw); } catch(e) {}
+      return {
+        id: it.id,
+        title: it.summary || '(No title)',
+        date: (it.start.date || it.start.dateTime || '').split('T')[0],
+        startTime: it.start.dateTime || null,
+        endTime: it.end.dateTime || null,
+        allDay: !!it.start.date,
+        color: ep.fsColor || COLS[0],
+        location: it.location || '',
+        notes: it.description || '',
+        pax: pax,
+        rrule: (it.recurrence && it.recurrence[0]) ? it.recurrence[0].replace('RRULE:', '') : '',
+        rem: rem,
+        gcalId: it.id,
+        updated: it.updated || ''
+      };
+    });
+    var localOnly = S.evs.filter(function(e) { return !e.gcalId; });
+    S.evs = gcevs.concat(localOnly);
     lsSet('evs', S.evs);
+    lsSet('lastSync', new Date().toISOString());
+    return gcevs.length;
   }).catch(function(e) { console.error('gcFetch error:', e); });
+}
+
+// Poll for new events + todos every 30 seconds when signed in
+var gcPollTimer = null;
+function startGcalPolling() {
+  if (gcPollTimer) clearInterval(gcPollTimer);
+  gcPollTimer = setInterval(function() {
+    if (!S.signed) return;
+    gcFetch().then(function(count) {
+      if (count !== undefined) {
+        renderAll();
+        renderTodoStrip();
+        renderTodoModal();
+      }
+    });
+  }, 30000);
 }
 
 function gcCreate(ev) {
@@ -948,6 +1131,23 @@ function showApp() {
   el('app').classList.remove('hidden');
   sv('ahead');
   renderAll();
+}
+
+function openWhoAmI() {
+  if (!S.signed) { toast('Connect Google first'); return; }
+  var chosen = null;
+  for (var i = 0; i < FAM.length; i++) {
+    if (confirm('Are you ' + FAM[i].name + '?')) { chosen = FAM[i]; break; }
+  }
+  if (chosen) {
+    lsSet('email_' + chosen.id, S.user.email);
+    S.user.name = chosen.name;
+    S.user.role = chosen.role;
+    lsSet('user', S.user);
+    toast('Welcome, ' + chosen.name + '!');
+    renderAll();
+    setupFAB();
+  }
 }
 
 /* ── WIRE UP BUTTONS ── */
@@ -984,12 +1184,28 @@ el('sorow').onclick = function() {
 };
 
 el('gcrow').onclick = function() {
-  if (S.demo) { toast('Sign out of demo first'); return; }
+  if (S.demo) { toast('Sign out of demo mode first'); return; }
   initG().then(function(ok) {
-    if (!ok) { toast('Google credentials not configured'); return; }
+    if (!ok) { toast('⚠️ Google credentials not configured — see README'); return; }
     S.tc.requestAccessToken({prompt:'select_account'});
   });
 };
+
+// Sync now button
+var syncnow = el('syncnowrow');
+if (syncnow) {
+  syncnow.onclick = function() {
+    if (!S.signed) return;
+    toast('Syncing...');
+    gcFetch().then(function() {
+      lsSet('lastSync', new Date().toISOString());
+      renderAll();
+      toast('Synced ✓');
+    });
+  };
+}
+
+// Who am I — handled via openWhoAmI function called from settings row onclick
 
 el('stog').onclick = function() { this.classList.toggle('on'); };
 el('dtog').onclick = function() { this.classList.toggle('on'); };
@@ -1010,33 +1226,159 @@ document.querySelectorAll('.overlay').forEach(function(o) {
 /* ── TODO LIST ── */
 var TODOS = [];
 
+// Load todos from localStorage (local cache)
 function lsTodos() {
   TODOS = lsGet('todos') || [];
 }
 
+// Save todos to localStorage
 function saveTodos() {
   lsSet('todos', TODOS);
 }
 
+// Create a todo — saves locally + pushes to GCal if signed in
 function addTodo() {
   var inp = el('todo-input');
   var text = inp.value.trim();
   if (!text) return;
-  TODOS.push({id: 'td' + Date.now(), text: text, done: false, createdAt: new Date().toISOString()});
+  var todo = {
+    id: 'td' + Date.now(),
+    text: text,
+    done: false,
+    createdAt: new Date().toISOString(),
+    gcalId: null
+  };
+  TODOS.push(todo);
   inp.value = '';
   saveTodos();
   renderTodoModal();
   renderTodoStrip();
+  // Sync to Google Calendar
+  if (S.signed && S.gapiObj) {
+    gcTodoCreate(todo).then(function(gcid) {
+      if (gcid) {
+        todo.gcalId = gcid;
+        saveTodos();
+      }
+    });
+  }
 }
 
+// Toggle done state — updates locally + GCal
 function toggleTodo(id) {
   var t = TODOS.find(function(x) { return x.id === id; });
-  if (t) { t.done = !t.done; saveTodos(); renderTodoStrip(); renderTodoModal(); }
+  if (!t) return;
+  t.done = !t.done;
+  saveTodos();
+  renderTodoStrip();
+  renderTodoModal();
+  if (S.signed && S.gapiObj && t.gcalId) {
+    gcTodoUpdate(t);
+  }
 }
 
+// Delete todo — removes locally + from GCal
 function deleteTodo(id) {
+  var t = TODOS.find(function(x) { return x.id === id; });
+  if (t && t.gcalId && S.signed && S.gapiObj) {
+    gcTodoDel(t.gcalId);
+  }
   TODOS = TODOS.filter(function(x) { return x.id !== id; });
-  saveTodos(); renderTodoStrip(); renderTodoModal();
+  saveTodos();
+  renderTodoStrip();
+  renderTodoModal();
+}
+
+// Fetch all todos from GCal (called after gcFetch)
+function gcFetchTodos() {
+  if (!S.signed || !S.gapiObj) return Promise.resolve();
+  var calId = S.calId || 'primary';
+  // Look for events tagged as todos — fetch far back and far forward
+  return gapi.client.calendar.events.list({
+    calendarId: calId,
+    privateExtendedProperty: 'fsType=todo',
+    singleEvents: true,
+    maxResults: 200,
+    showDeleted: false
+  }).then(function(r) {
+    var items = r.result.items || [];
+    var gcTodos = items.map(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      return {
+        id: it.id,
+        text: it.summary || '',
+        done: ep.fsDone === 'true',
+        createdAt: it.created || new Date().toISOString(),
+        gcalId: it.id
+      };
+    });
+    // Merge: replace gcal todos, keep any local-only ones
+    var localOnly = TODOS.filter(function(t) { return !t.gcalId; });
+    TODOS = gcTodos.concat(localOnly);
+    saveTodos();
+    renderTodoStrip();
+    renderTodoModal();
+  }).catch(function(e) {
+    console.error('gcFetchTodos error:', e);
+  });
+}
+
+// Create a todo in GCal as a special all-day event
+function gcTodoCreate(todo) {
+  if (!S.signed || !S.gapiObj) return Promise.resolve(null);
+  var calId = S.calId || 'primary';
+  var today = new Date();
+  var dateStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  return gapi.client.calendar.events.insert({
+    calendarId: calId,
+    resource: {
+      summary: todo.text,
+      start: { date: dateStr },
+      end:   { date: dateStr },
+      extendedProperties: {
+        private: {
+          fsType: 'todo',
+          fsDone: 'false',
+          fsCreatedAt: todo.createdAt
+        }
+      }
+    }
+  }).then(function(r) {
+    return r.result.id;
+  }).catch(function(e) {
+    console.error('gcTodoCreate error:', e);
+    return null;
+  });
+}
+
+// Update done state of a todo in GCal
+function gcTodoUpdate(todo) {
+  if (!S.signed || !S.gapiObj || !todo.gcalId) return;
+  var calId = S.calId || 'primary';
+  gapi.client.calendar.events.patch({
+    calendarId: calId,
+    eventId: todo.gcalId,
+    resource: {
+      extendedProperties: {
+        private: {
+          fsType: 'todo',
+          fsDone: todo.done ? 'true' : 'false'
+        }
+      }
+    }
+  }).catch(function(e) { console.error('gcTodoUpdate error:', e); });
+}
+
+// Delete a todo from GCal
+function gcTodoDel(gcalId) {
+  if (!S.signed || !S.gapiObj || !gcalId) return;
+  var calId = S.calId || 'primary';
+  gapi.client.calendar.events.delete({
+    calendarId: calId,
+    eventId: gcalId
+  }).catch(function(e) { console.error('gcTodoDel error:', e); });
 }
 
 function openTodo() {
@@ -1053,7 +1395,7 @@ function renderTodoStrip() {
   strip.innerHTML = '';
   var title = document.createElement('div');
   title.className = 'todo-strip-title';
-  title.textContent = '\u2713 TO-DO (' + active.length + ' remaining)';
+  title.textContent = '\u2713 TO-DO (' + active.length + ' remaining)' + (S.signed ? ' \u2601' : ' (local)');
   strip.appendChild(title);
   TODOS.forEach(function(t) {
     var row = document.createElement('div');
