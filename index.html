@@ -13,16 +13,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f3ee;color:#1a1a14}
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: url('https://i.postimg.cc/VNbn5QDm/icon-512.png') center center no-repeat;
-  background-size: 380px;
-  opacity: 0.035;
-  z-index: -1;
-  pointer-events: none;
-}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,textarea,select{font-family:inherit;font-size:16px}
 :root{
@@ -148,7 +138,7 @@ textarea.finp{resize:none;min-height:70px}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cpkr{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
 .csw{width:30px;height:30px;border-radius:50%;cursor:pointer;position:relative}
-.csw.on::after{content:'\2713';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800}
+.csw.on::after{content:'checkmark';content:'\2713';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800}
 .pchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}
 .pchip{display:flex;align-items:center;gap:5px;padding:5px 11px 5px 7px;border-radius:999px;border:1.5px solid var(--bdr);font-size:13px;font-weight:600;cursor:pointer}
 .pchip.on{color:#fff;border-color:transparent}
@@ -237,7 +227,9 @@ textarea.finp{resize:none;min-height:70px}
         <div style="font-size:17px;font-weight:800;color:var(--g4)">Next 7 Days</div>
         <button onclick="openTodo()" style="display:flex;align-items:center;gap:5px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#10003; To-Do</button>
       </div>
+      <!-- TO-DO STRIP -->
       <div id="todo-strip" style="display:none;border-bottom:1px solid var(--bdr);background:#fffbf0"></div>
+      <!-- AHEAD LIST -->
       <div id="ahead-list" style="padding:8px 14px 90px"></div>
     </div>
 
@@ -338,7 +330,7 @@ textarea.finp{resize:none;min-height:70px}
 
 <script>
 var GCID = '861642868717-pnt69qjsjcfibqlcm1kdgv006afhl3tb.apps.googleusercontent.com';
-var GAPIKEY = 'AIzaSyA8PN-da6RoERhPfZUSsb7lN0fsskPmlpI';
+var GAPIKEY = 'AIzaSyA2ZLTJ_tz_fB09Exwke7vOuLYBl0E7OIU';
 var GSCOPE = 'https://www.googleapis.com/auth/calendar';
 var CALNAME = 'FamilySync';
 
@@ -371,12 +363,10 @@ var REMS = [
 
 var S = {
   user:null, demo:false, signed:false, gapiObj:null, tc:null, calId:null,
-  view:'ahead', nav:'cal', cur:new Date(), sel:new Date(),
+  view:'day', nav:'cal', cur:new Date(), sel:new Date(),
   evs:[], eid:null,
   fc:COLS[0], fp:['rudi'], fr:[-60], frr:''
 };
-
-let TODOS = [];
 
 function lsGet(k) {
   try { var v = localStorage.getItem('fs_' + k); return v ? JSON.parse(v) : null; } catch(e) { return null; }
@@ -426,7 +416,6 @@ function toast(msg, dur) {
 function OM(id) { el(id).classList.add('open'); }
 function CM(id) { el(id).classList.remove('open'); }
 
-// Improved recurrence logic (fixes Biweekly)
 function evsForDate(date) {
   var iso = isoD(date);
   return S.evs.filter(function(ev) {
@@ -435,20 +424,199 @@ function evsForDate(date) {
       var start = new Date(ev.date + 'T00:00:00');
       if (date < start) return false;
       var diff = Math.round((date - start) / 86400000);
-      
       if (ev.rrule.indexOf('DAILY') > -1) return diff >= 0;
-      if (ev.rrule.indexOf('WEEKLY') > -1) {
-        if (ev.rrule.indexOf('INTERVAL=2') > -1) {
-          return diff % 14 === 0; // Biweekly
-        }
-        return diff % 7 === 0; // Weekly
-      }
+      if (ev.rrule.indexOf('WEEKLY') > -1) return diff % 7 === 0;
       if (ev.rrule.indexOf('MONTHLY') > -1) {
         return (new Date(ev.date + 'T00:00:00')).getDate() === date.getDate();
       }
     }
     return false;
   });
+}
+
+var TODOS = [];
+
+function lsTodos() { TODOS = lsGet('todos') || []; }
+function saveTodos() { lsSet('todos', TODOS); }
+
+function addTodo() {
+  var inp = el('todo-input');
+  var text = inp.value.trim();
+  if (!text) return;
+  var t = {id:'td'+Date.now(), text:text, done:false, createdAt:new Date().toISOString(), gcalId:null};
+  TODOS.unshift(t);
+  inp.value = '';
+  saveTodos();
+  renderTodoStrip();
+  renderTodoModal();
+  if (S.signed && S.gapiObj) {
+    gcTodoCreate(t).then(function(gcid) { if (gcid) { t.gcalId=gcid; saveTodos(); } });
+  }
+}
+
+function toggleTodo(id) {
+  var t = TODOS.find(function(x) { return x.id === id; });
+  if (!t) return;
+  t.done = !t.done;
+  saveTodos();
+  renderTodoStrip();
+  renderTodoModal();
+  if (S.signed && S.gapiObj && t.gcalId) gcTodoUpdate(t);
+}
+
+function deleteTodo(id) {
+  var t = TODOS.find(function(x) { return x.id === id; });
+  if (t && t.gcalId && S.signed && S.gapiObj) gcTodoDel(t.gcalId);
+  TODOS = TODOS.filter(function(x) { return x.id !== id; });
+  saveTodos();
+  renderTodoStrip();
+  renderTodoModal();
+}
+
+function openTodo() {
+  renderTodoModal();
+  OM('todomod');
+  setTimeout(function() { var inp=el('todo-input'); if(inp) inp.focus(); }, 300);
+}
+
+function renderTodoStrip() {
+  var strip = el('todo-strip');
+  if (!strip) return;
+  var active = TODOS.filter(function(t) { return !t.done; });
+  if (!TODOS.length) { strip.style.display='none'; return; }
+  strip.style.display = 'block';
+  strip.innerHTML = '<div class="todo-strip-title">✓ TO-DO ('+active.length+' remaining)'+(S.signed?' ☁':'')+'</div>';
+  TODOS.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'todo-strip-item';
+    var cb = document.createElement('div');
+    cb.className = 'todo-cb' + (t.done ? ' done' : '');
+    cb.onclick = (function(id) { return function() { toggleTodo(id); }; })(t.id);
+    var txt = document.createElement('span');
+    txt.className = 'todo-text' + (t.done ? ' done' : '');
+    txt.textContent = t.text;
+    var del = document.createElement('button');
+    del.className = 'todo-del';
+    del.textContent = '×';
+    del.onclick = (function(id) { return function() { deleteTodo(id); }; })(t.id);
+    row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
+    strip.appendChild(row);
+  });
+}
+
+function renderTodoModal() {
+  var list = el('todo-list-modal');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!TODOS.length) {
+    var emp = document.createElement('div');
+    emp.className = 'todo-empty';
+    emp.textContent = 'No to-dos yet — add one above!';
+    list.appendChild(emp);
+    return;
+  }
+  TODOS.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'todo-modal-item';
+    var cb = document.createElement('div');
+    cb.className = 'todo-cb' + (t.done ? ' done' : '');
+    cb.onclick = (function(id) { return function() { toggleTodo(id); }; })(t.id);
+    var txt = document.createElement('span');
+    txt.className = 'todo-text' + (t.done ? ' done' : '');
+    txt.style.flex = '1';
+    txt.textContent = t.text;
+    var del = document.createElement('button');
+    del.className = 'todo-del';
+    del.textContent = '×';
+    del.onclick = (function(id) { return function() { deleteTodo(id); }; })(t.id);
+    row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+function renderAhead() {
+  renderTodoStrip();
+  var list = el('ahead-list');
+  if (!list) return;
+  list.innerHTML = '';
+  var today = new Date(); today.setHours(0,0,0,0);
+  for (var i = 0; i < 7; i++) {
+    var day = new Date(today); day.setDate(today.getDate() + i);
+    var evs = evsForDate(day).sort(function(a,b) {
+      if (!a.startTime) return -1; if (!b.startTime) return 1;
+      return new Date(a.startTime)-new Date(b.startTime);
+    });
+    var dayName = i===0 ? 'Today' : (i===1 ? 'Tomorrow' : day.toLocaleDateString('en-US',{weekday:'long'}));
+    var dateNum = day.getDate();
+    var monthName = day.toLocaleDateString('en-US',{month:'short'});
+
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--card);border-radius:16px;margin-bottom:16px;overflow:hidden;box-shadow:var(--sh);border:1px solid var(--bdr);';
+
+    var hdrEl = document.createElement('div');
+    hdrEl.style.cssText = 'padding:14px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;';
+    var dateBox = document.createElement('div');
+    dateBox.style.cssText = 'text-align:center;min-width:52px;';
+    dateBox.innerHTML = '<div style="font-size:13px;font-weight:700;color:'+(i===0?'var(--green)':'var(--t3)')+';">'+dayName+'</div>'
+      +'<div style="font-size:34px;font-weight:800;line-height:1;color:'+(i===0?'var(--green)':'var(--g4)')+';">'+dateNum+'</div>'
+      +'<div style="font-size:11px;color:var(--t3);">'+monthName+'</div>';
+    var badgeBox = document.createElement('div');
+    badgeBox.style.flex = '1';
+    if (i===0) badgeBox.innerHTML = '<span style="background:var(--g3);color:var(--g4);padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;">TODAY</span>';
+    hdrEl.appendChild(dateBox); hdrEl.appendChild(badgeBox);
+    card.appendChild(hdrEl);
+
+    var content = document.createElement('div');
+    content.style.padding = '12px 16px';
+
+    evs.forEach(function(ev) {
+      var evEl = document.createElement('div');
+      evEl.className = 'ecard';
+      evEl.style.marginBottom = '8px';
+      evEl.style.borderLeftColor = ev.color;
+      var timeStr = ev.allDay ? 'All day' : (ev.startTime ? fmtTime(new Date(ev.startTime)) : '');
+      evEl.innerHTML = '<div style="display:flex;gap:12px;align-items:start;">'
+        +'<div style="min-width:64px;color:var(--t2);font-size:13.5px;font-weight:600;">'+timeStr+'</div>'
+        +'<div style="flex:1;"><div style="font-weight:700;font-size:15px;">'+ev.title+'</div>'
+        +(ev.location?'<div style="font-size:13px;color:var(--t3);margin-top:2px;">&#128205; '+ev.location+'</div>':'')
+        +'</div></div>';
+      evEl.onclick = (function(e) { return function() { showDet(e); }; })(ev);
+      content.appendChild(evEl);
+    });
+
+    if (i===0 && TODOS.length > 0) {
+      var active = TODOS.filter(function(t) { return !t.done; });
+      if (active.length > 0) {
+        var th = document.createElement('div');
+        th.style.cssText = 'margin:12px 0 6px;font-size:13px;font-weight:700;color:var(--cassie);';
+        th.textContent = 'To-Do (' + active.length + ')';
+        content.appendChild(th);
+        active.slice(0,3).forEach(function(t) {
+          var tEl = document.createElement('div');
+          tEl.className = 'todo-strip-item';
+          tEl.style.cssText = 'background:#fffbf0;border-radius:10px;margin-bottom:4px;';
+          var cb = document.createElement('div');
+          cb.className = 'todo-cb';
+          cb.onclick = (function(id) { return function() { toggleTodo(id); setTimeout(renderAhead,10); }; })(t.id);
+          var txt = document.createElement('span');
+          txt.className = 'todo-text';
+          txt.textContent = t.text;
+          tEl.appendChild(cb); tEl.appendChild(txt);
+          content.appendChild(tEl);
+        });
+      }
+    }
+
+    if (!evs.length && !(i===0 && TODOS.filter(function(t){return !t.done;}).length)) {
+      var empty = document.createElement('div');
+      empty.style.cssText = 'padding:40px 20px;text-align:center;color:var(--t3);font-size:15px;';
+      empty.innerHTML = 'No events<br><span style="font-size:13px;">Tap + to add one</span>';
+      content.appendChild(empty);
+    }
+
+    card.appendChild(content);
+    list.appendChild(card);
+  }
 }
 
 function renderAll() {
@@ -461,173 +629,6 @@ function renderAll() {
   setupFAB();
 }
 
-// TODO System
-function lsTodos() {
-  TODOS = lsGet('todos') || [];
-}
-function saveTodos() {
-  lsSet('todos', TODOS);
-}
-
-function renderTodoStrip() {
-  const strip = el('todo-strip');
-  const openTodos = TODOS.filter(t => !t.done);
-  if (openTodos.length === 0) {
-    strip.style.display = 'none';
-    return;
-  }
-  strip.style.display = 'block';
-  strip.innerHTML = `<div class="todo-strip-title">Open To-Dos (${openTodos.length})</div>`;
-  openTodos.slice(0, 3).forEach(todo => {
-    const item = document.createElement('div');
-    item.className = 'todo-strip-item';
-    item.innerHTML = `
-      <div class="todo-cb ${todo.done ? 'done' : ''}" onclick="toggleTodo('${todo.id}')"></div>
-      <div class="todo-text ${todo.done ? 'done' : ''}">${todo.text}</div>
-    `;
-    strip.appendChild(item);
-  });
-}
-
-function renderTodoModal() {
-  const container = el('todo-list-modal');
-  container.innerHTML = TODOS.length === 0 
-    ? '<div class="todo-empty">No to-do items yet.<br>Add one above.</div>'
-    : TODOS.map(todo => `
-      <div class="todo-modal-item">
-        <div class="todo-cb ${todo.done ? 'done' : ''}" onclick="toggleTodo('${todo.id}')"></div>
-        <div class="todo-text ${todo.done ? 'done' : ''}" style="flex:1">${todo.text}</div>
-        <button class="todo-del" onclick="deleteTodo('${todo.id}')">×</button>
-      </div>
-    `).join('');
-}
-
-window.addTodo = function() {
-  const input = el('todo-input');
-  const text = input.value.trim();
-  if (!text) return;
-  TODOS.unshift({ id: 'todo_' + Date.now(), text, done: false, createdAt: new Date().toISOString() });
-  saveTodos();
-  input.value = '';
-  renderTodoStrip();
-  renderAhead();
-};
-
-window.toggleTodo = function(id) {
-  const todo = TODOS.find(t => t.id === id);
-  if (todo) {
-    todo.done = !todo.done;
-    saveTodos();
-    renderTodoStrip();
-    renderAhead();
-  }
-};
-
-window.deleteTodo = function(id) {
-  if (confirm('Delete this to-do?')) {
-    TODOS = TODOS.filter(t => t.id !== id);
-    saveTodos();
-    renderTodoStrip();
-    renderAhead();
-  }
-};
-
-window.openTodo = function() {
-  OM('todomod');
-  renderTodoModal();
-};
-
-// 7-Day Outlook
-function renderAhead() {
-  const container = el('ahead-list');
-  container.innerHTML = '';
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(today);
-    day.setDate(today.getDate() + i);
-    const isToday = i === 0;
-    const dayName = isToday ? 'Today' : (i === 1 ? 'Tomorrow' : day.toLocaleDateString('en-US', {weekday: 'long'}));
-    const dateNum = day.getDate();
-    const monthName = day.toLocaleDateString('en-US', {month: 'short'});
-
-    const dayCard = document.createElement('div');
-    dayCard.style.cssText = `background:var(--card);border-radius:16px;margin-bottom:16px;overflow:hidden;box-shadow:var(--sh);border:1px solid var(--bdr);`;
-
-    dayCard.innerHTML = `
-      <div style="padding:14px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;">
-        <div style="text-align:center;min-width:52px;">
-          <div style="font-size:13px;font-weight:700;color:${isToday?'var(--green)':'var(--t3)'};">${dayName}</div>
-          <div style="font-size:34px;font-weight:800;line-height:1;color:${isToday?'var(--green)':'var(--g4)'};">${dateNum}</div>
-          <div style="font-size:11px;color:var(--t3);">${monthName}</div>
-        </div>
-        <div style="flex:1;">
-          ${isToday ? '<span style="background:var(--g3);color:var(--g4);padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;">TODAY</span>' : ''}
-        </div>
-      </div>
-    `;
-
-    const content = document.createElement('div');
-    content.style.padding = '12px 16px';
-
-    const dayEvents = evsForDate(day);
-    const dayTodos = isToday ? TODOS.filter(t => !t.done) : [];
-
-    if (dayEvents.length > 0) {
-      dayEvents.forEach(ev => {
-        const evEl = document.createElement('div');
-        evEl.className = 'ecard';
-        evEl.style.marginBottom = '8px';
-        evEl.style.borderLeftColor = ev.color;
-        evEl.style.cursor = 'pointer';
-        const timeStr = ev.allDay ? 'All day' : (ev.startTime ? fmtTime(new Date(ev.startTime)) : '');
-        evEl.innerHTML = `
-          <div style="display:flex;gap:12px;align-items:start;">
-            <div style="min-width:64px;color:var(--t2);font-size:13.5px;font-weight:600;">${timeStr}</div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:15px;">${ev.title}</div>
-              ${ev.location ? `<div style="font-size:13px;color:var(--t3);margin-top:2px;">📍 ${ev.location}</div>` : ''}
-            </div>
-          </div>
-        `;
-        evEl.onclick = () => showDet(ev);
-        content.appendChild(evEl);
-      });
-    }
-
-    if (dayTodos.length > 0) {
-      const todoHeader = document.createElement('div');
-      todoHeader.style.cssText = 'margin:12px 0 6px;font-size:13px;font-weight:700;color:var(--cassie);';
-      todoHeader.textContent = 'To-Do';
-      content.appendChild(todoHeader);
-      dayTodos.forEach(todo => {
-        const tEl = document.createElement('div');
-        tEl.className = 'todo-strip-item';
-        tEl.style.background = '#fffbf0';
-        tEl.style.borderRadius = '10px';
-        tEl.innerHTML = `
-          <div class="todo-cb ${todo.done ? 'done' : ''}" onclick="toggleTodo('${todo.id}');setTimeout(renderAhead,10)"></div>
-          <div class="todo-text ${todo.done ? 'done' : ''}">${todo.text}</div>
-        `;
-        content.appendChild(tEl);
-      });
-    }
-
-    if (dayEvents.length === 0 && dayTodos.length === 0) {
-      const empty = document.createElement('div');
-      empty.style.cssText = 'padding:40px 20px;text-align:center;color:var(--t3);font-size:15px;';
-      empty.innerHTML = 'No events<br><span style="font-size:13px;">Tap + to add one</span>';
-      content.appendChild(empty);
-    }
-
-    dayCard.appendChild(content);
-    container.appendChild(dayCard);
-  }
-  renderTodoStrip();
-}
-
-// Month View
 function renderMonth() {
   var y = S.cur.getFullYear(), m = S.cur.getMonth();
   el('mlbl').textContent = S.cur.toLocaleDateString('en-US', {month:'long', year:'numeric'});
@@ -646,23 +647,17 @@ function renderMonth() {
 function mkCell(date, other) {
   var cell = document.createElement('div');
   var evs = evsForDate(date);
-  var isSel = sameDay(date, S.sel);
-  var isTod = isToday(date);
-  cell.className = `mcell ${other ? 'other' : ''} ${isTod ? 'today' : ''} ${isSel && !isTod ? 'sel' : ''}`;
-  let dotsHTML = evs.length ? 
-    '<div class="edots">' + evs.slice(0,4).map(e => `<div class="edot" style="background:${e.color}"></div>`).join('') + 
-    (evs.length > 4 ? `<span style="font-size:9px;color:var(--t3)">+${evs.length-4}</span>` : '') + '</div>' : '';
-  cell.innerHTML = `<div class="dn ${isTod ? 'today' : ''}">${date.getDate()}</div>${dotsHTML}`;
-  cell.onclick = function() {
-    S.sel = date;
-    S.cur = new Date(date);
-    renderAll();
-    sv('day');
-  };
+  cell.className = 'mcell' + (other ? ' other' : '') + (isToday(date) ? ' today' : '') + (sameDay(date, S.sel) && !isToday(date) ? ' sel' : '');
+  var dots = evs.slice(0, 3).map(function(e) {
+    return '<div class="edot" style="background:' + e.color + '"></div>';
+  }).join('');
+  cell.innerHTML = '<div class="dn">' + date.getDate() + '</div><div class="edots">' + dots + '</div>';
+  cell.onclick = (function(dt) {
+    return function() { S.sel = dt; S.cur = new Date(dt); renderAll(); sv('day'); };
+  })(date);
   return cell;
 }
 
-// Week View
 function renderWeek() {
   var start = new Date(S.cur);
   start.setDate(S.cur.getDate() - S.cur.getDay());
@@ -678,7 +673,7 @@ function renderWeek() {
     var c = document.createElement('div');
     c.className = 'wkdh' + (isToday(d) ? ' today' : '');
     c.innerHTML = shortDay(d).toUpperCase() + '<span class="wkdd">' + d.getDate() + '</span>';
-    c.onclick = function() { S.sel = d; renderAll(); sv('day'); };
+    c.onclick = (function(dt) { return function() { S.sel = dt; renderAll(); sv('day'); }; })(d);
     hdr.appendChild(c);
   });
   var body = el('wkbody');
@@ -688,29 +683,30 @@ function renderWeek() {
   for (var h = 0; h < 24; h++) {
     var s = document.createElement('div');
     s.className = 'wkts';
-    s.textContent = h === 0 ? '' : (h > 12 ? (h-12)+'pm' : h+'am');
+    s.textContent = h === 0 ? '' : (h > 12 ? (h - 12) + 'pm' : h + 'am');
     tc.appendChild(s);
   }
   body.appendChild(tc);
   days.forEach(function(d) {
     var col = document.createElement('div');
     col.className = 'wkdc';
+    col.style.position = 'relative';
     for (var h = 0; h < 24; h++) {
-      var hr = document.createElement('div');
-      hr.className = 'wkhr';
-      col.appendChild(hr);
+      var r = document.createElement('div');
+      r.className = 'wkhr';
+      col.appendChild(r);
     }
-    evsForDate(d).filter(e => !e.allDay && e.startTime).forEach(function(ev) {
+    evsForDate(d).filter(function(e) { return !e.allDay && e.startTime; }).forEach(function(ev) {
       var st = new Date(ev.startTime);
       var en = ev.endTime ? new Date(ev.endTime) : new Date(st.getTime() + 3600000);
-      var top = (st.getHours() + st.getMinutes()/60) * 48;
-      var height = Math.max(((en - st)/3600000) * 48, 20);
-      var evEl = document.createElement('div');
-      evEl.className = 'wkev';
-      evEl.style.cssText = `top:${top}px;height:${height}px;background:${ev.color};`;
-      evEl.textContent = ev.title;
-      evEl.onclick = () => showDet(ev);
-      col.appendChild(evEl);
+      var top = (st.getHours() + st.getMinutes() / 60) * 48;
+      var ht = Math.max(((en - st) / 3600000) * 48, 18);
+      var b = document.createElement('div');
+      b.className = 'wkev';
+      b.style.cssText = 'top:' + top + 'px;height:' + ht + 'px;background:' + ev.color;
+      b.textContent = ev.title;
+      b.onclick = (function(e) { return function() { showDet(e); }; })(ev);
+      col.appendChild(b);
     });
     body.appendChild(col);
   });
@@ -763,27 +759,32 @@ function renderDay() {
 }
 
 function renderSet() {
+  // Family members list
   el('famlist').innerHTML = FAM.map(function(m) {
     var email = lsGet('email_' + m.id) || '';
-    return `<div class="mrow"><div class="mavlg" style="background:${m.color}">${m.init}</div>`
-      + `<div class="minf"><div class="mn">${m.name}</div><div class="mr">`
+    return '<div class="mrow"><div class="mavlg" style="background:' + m.color + '">' + m.init + '</div>'
+      + '<div class="minf"><div class="mn">' + m.name + '</div><div class="mr">'
       + (email ? email : (m.role === 'owner' ? 'Can create &amp; edit events' : 'View &amp; receive reminders'))
-      + `</div></div><span class="mb ${m.role === 'owner' ? 'mb-o' : 'mb-v'}">`
+      + '</div></div><span class="mb ' + (m.role === 'owner' ? 'mb-o' : 'mb-v') + '">'
       + (m.role === 'owner' ? 'Owner' : 'Viewer') + '</span></div>';
   }).join('');
 
+  // Account info
   if (S.user) {
     el('sname').textContent = S.user.name || 'Family Member';
     el('semail').textContent = S.user.email || '';
   }
 
+  // GCal status
   if (S.signed) {
     el('gcstat').textContent = 'Connected as ' + (S.user ? S.user.email : '');
     el('syncnowrow').style.display = 'flex';
     var gb = el('gcbanner');
     gb.innerHTML = '<div class="gcok"><div class="dot"></div>Syncing with Google Calendar every 30s</div>';
+    // Last sync time
     var ls = lsGet('lastSync');
     if (ls) el('lastsync').textContent = 'Last synced: ' + new Date(ls).toLocaleTimeString();
+    // Who am I
     var matched = FAM.find(function(f) { return S.user && lsGet('email_' + f.id) === S.user.email; });
     el('whoami-text').textContent = matched ? (matched.name + ' (' + matched.role + ')') : 'Tap to set your family role';
   } else if (S.demo) {
@@ -798,6 +799,7 @@ function renderSet() {
     el('whoami-text').textContent = 'Connect Google first';
   }
 
+  // Family emails section (owners only)
   var member = FAM.find(function(f) { return S.user && f.name === S.user.name; });
   var isOwner = !member || member.role === 'owner';
   var emailSection = el('family-emails-section');
@@ -815,7 +817,7 @@ function renderSet() {
       row.style.gap = '6px';
       var lbl = document.createElement('div');
       lbl.className = 'svb';
-      lbl.innerHTML = `<div class="svl" style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:50%;background:${m.color};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff">${m.init}</span>${m.name}</div>`;
+      lbl.innerHTML = '<div class="svl" style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:50%;background:' + m.color + ';display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff">' + m.init + '</span>' + m.name + '</div>';
       var inp = document.createElement('input');
       inp.type = 'email';
       inp.className = 'finp';
@@ -827,6 +829,16 @@ function renderSet() {
       row.appendChild(inp);
       emailCard.appendChild(row);
     });
+    // Share button
+    var shareRow = document.createElement('div');
+    shareRow.className = 'svrow';
+    shareRow.innerHTML = '<span class="svi">&#128279;</span><div class="svb"><div class="svl">Share Calendar with Family</div><div class="svs">Sends access invites to all emails above</div></div>';
+    shareRow.style.cursor = 'pointer';
+    shareRow.onclick = function() {
+      if (!S.calId || S.calId === 'primary') { toast('Connect Google Calendar first'); return; }
+      gcShareCalendar(S.calId).then(function() { toast('Invites sent to family members'); });
+    };
+    emailCard.appendChild(shareRow);
   }
 }
 
@@ -841,35 +853,37 @@ function sv(v) {
   ['ahead-view','month-view','week-view','day-view','settings-view'].forEach(function(id) {
     var e = el(id);
     if (!e) return;
-    if (id === 'settings-view') { 
-      e.style.display = (v === 'settings') ? 'block' : 'none'; 
-    } else if (id === 'ahead-view') { 
-      e.style.display = (v === 'ahead') ? 'block' : 'none'; 
-    } else { 
-      e.classList.toggle('hidden', id !== v + '-view'); 
-    }
+    if (id === 'settings-view') { e.style.display = 'none'; e.classList.remove('on'); }
+    else if (id === 'ahead-view') { e.style.display = 'none'; e.classList.remove('on'); }
+    else { e.classList.add('hidden'); }
   });
-  document.querySelectorAll('.vtab').forEach(function(t) { 
-    t.classList.toggle('on', t.dataset.v === v); 
-  });
+  document.querySelectorAll('.vtab').forEach(function(t) { t.classList.toggle('on', t.dataset.v === v); });
   if (v === 'settings') {
+    el('settings-view').style.display = 'block';
     el('vtabs').style.display = 'none';
+  } else if (v === 'ahead') {
+    el('ahead-view').style.display = 'block';
+    el('vtabs').style.display = 'flex';
+    renderAhead();
   } else {
+    el(v + '-view').classList.remove('hidden');
     el('vtabs').style.display = 'flex';
   }
+  el('tb-month').textContent = S.cur.toLocaleDateString('en-US', {month:'long', year:'numeric'});
 }
 
 function sn(n) {
   S.nav = n;
-  document.querySelectorAll('.nit').forEach(function(i) { 
-    i.classList.toggle('on', i.dataset.n === n); 
-  });
+  document.querySelectorAll('.nit').forEach(function(i) { i.classList.toggle('on', i.dataset.n === n); });
   el('fab').parentElement.style.visibility = (n === 'set') ? 'hidden' : 'visible';
   if (n === 'set') {
+    ['month-view','week-view','day-view'].forEach(function(id) { el(id).classList.add('hidden'); });
     sv('settings');
   } else {
     el('settings-view').style.display = 'none';
-    sv(S.view);
+    el('settings-view').classList.remove('on');
+    el('vtabs').style.display = 'flex';
+    sv(S.view === 'month' || S.view === 'week' || S.view === 'day' || S.view === 'ahead' ? S.view : 'ahead');
   }
 }
 
@@ -881,20 +895,22 @@ function showDet(ev) {
   var en = ev.endTime ? new Date(ev.endTime) : null;
   var px = (ev.pax || []).map(function(pid) {
     var mb = FAM.find(function(f) { return f.id === pid; });
-    return mb ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;margin-bottom:4px"><span style="width:22px;height:22px;border-radius:50%;background:${mb.color};display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">${mb.init}</span>${mb.name}</span>` : '';
+    return mb ? '<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;margin-bottom:4px">'
+      + '<span style="width:22px;height:22px;border-radius:50%;background:' + mb.color + ';display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">' + mb.init + '</span>'
+      + mb.name + '</span>' : '';
   }).join('');
   var rrt = {'':'No repeat','FREQ=DAILY':'Every day','FREQ=WEEKLY':'Every week','FREQ=MONTHLY':'Every month'};
   var dtStr = fmtDate(new Date(ev.date + 'T00:00:00'));
   var tmStr = ev.allDay ? '<br>All day' : (st ? ('<br>' + fmtTime(st) + (en ? ' &ndash; ' + fmtTime(en) : '')) : '');
   el('detcon').innerHTML =
-    `<div class="evban" style="background:${ev.color}"><div class="evbant">${ev.title}</div></div>`
-    + `<div class="drow"><div class="dico">&#128197;</div><div class="dcon"><div class="dlbl">Date &amp; Time</div><div class="dval"><strong>${dtStr}</strong>${tmStr}</div></div></div>`
-    + (ev.location ? `<div class="drow"><div class="dico">&#128205;</div><div class="dcon"><div class="dlbl">Location</div><div class="dval"><strong>${ev.location}</strong></div></div></div>` : '')
-    + `<div class="drow"><div class="dico">&#128101;</div><div class="dcon"><div class="dlbl">Family Members</div><div class="dval" style="display:flex;flex-wrap:wrap;align-items:center;margin-top:2px">${px}</div></div></div>`
-    + (ev.rrule ? `<div class="drow"><div class="dico">&#128260;</div><div class="dcon"><div class="dlbl">Repeat</div><div class="dval">${rrt[ev.rrule] || ev.rrule}</div></div></div>` : '')
-    + `<div class="drow"><div class="dico">&#128276;</div><div class="dcon"><div class="dlbl">Reminder</div><div class="dval">${(ev.rem || []).map(r => rl[String(r)] || (Math.abs(r) + ' min before')).join(', ') || 'None'}</div></div></div>`
-    + (ev.notes ? `<div class="drow"><div class="dico">&#128203;</div><div class="dcon"><div class="dlbl">Notes</div><div class="dval">${ev.notes}</div></div></div>` : '')
-    + (own ? `<div class="evacts"><button class="evact evedit" onclick="openEdit('${ev.id}')">Edit</button><button class="evact evdel" onclick="delEv('${ev.id}')">Delete</button></div>` : '');
+    '<div class="evban" style="background:' + ev.color + '"><div class="evbant">' + ev.title + '</div></div>'
+    + '<div class="drow"><div class="dico">&#128197;</div><div class="dcon"><div class="dlbl">Date &amp; Time</div><div class="dval"><strong>' + dtStr + '</strong>' + tmStr + '</div></div></div>'
+    + (ev.location ? '<div class="drow"><div class="dico">&#128205;</div><div class="dcon"><div class="dlbl">Location</div><div class="dval"><strong>' + ev.location + '</strong></div></div></div>' : '')
+    + '<div class="drow"><div class="dico">&#128101;</div><div class="dcon"><div class="dlbl">Family Members</div><div class="dval" style="display:flex;flex-wrap:wrap;align-items:center;margin-top:2px">' + px + '</div></div></div>'
+    + (ev.rrule ? '<div class="drow"><div class="dico">&#128260;</div><div class="dcon"><div class="dlbl">Repeat</div><div class="dval">' + (rrt[ev.rrule] || ev.rrule) + '</div></div></div>' : '')
+    + '<div class="drow"><div class="dico">&#128276;</div><div class="dcon"><div class="dlbl">Reminder</div><div class="dval">' + ((ev.rem || []).map(function(r) { return rl[String(r)] || (Math.abs(r) + ' min before'); }).join(', ') || 'None') + '</div></div></div>'
+    + (ev.notes ? '<div class="drow"><div class="dico">&#128203;</div><div class="dcon"><div class="dlbl">Notes</div><div class="dval">' + ev.notes + '</div></div></div>' : '')
+    + (own ? '<div class="evacts"><button class="evact evedit" onclick="openEdit(\'' + ev.id + '\')">Edit</button><button class="evact evdel" onclick="delEv(\'' + ev.id + '\')">Delete</button></div>' : '');
   OM('detmod');
 }
 
@@ -904,11 +920,11 @@ function buildForm() {
   COLS.forEach(function(c) {
     var s = document.createElement('div');
     s.className = 'csw' + (c === S.fc ? ' on' : '');
-    s.style.cssText = `background:${c};width:30px;height:30px;border-radius:50%;cursor:pointer;position:relative;display:inline-flex;align-items:center;justify-content:center;`;
+    s.style.cssText = 'background:' + c + ';width:30px;height:30px;border-radius:50%;cursor:pointer;position:relative;display:inline-flex;align-items:center;justify-content:center;';
     if (c === S.fc) s.innerHTML = '<span style="color:#fff;font-size:14px;font-weight:800">&#10003;</span>';
     s.onclick = (function(col, sw) {
       return function() {
-        document.querySelectorAll('#cpkr .csw').forEach(x => { x.classList.remove('on'); x.innerHTML = ''; });
+        document.querySelectorAll('#cpkr .csw').forEach(function(x) { x.classList.remove('on'); x.innerHTML = ''; });
         sw.classList.add('on');
         sw.innerHTML = '<span style="color:#fff;font-size:14px;font-weight:800">&#10003;</span>';
         S.fc = col;
@@ -917,54 +933,75 @@ function buildForm() {
     cp.appendChild(s);
   });
 
-  // Similar logic for participants, repeat, reminders (kept minimal for brevity)
-  var pc = el('pchips'); pc.innerHTML = '';
-  FAM.forEach(m => {
-    var on = S.fp.indexOf(m.id) > -1;
+  var pc = el('pchips');
+  pc.innerHTML = '';
+  FAM.forEach(function(m) {
     var ch = document.createElement('div');
-    ch.className = `pchip ${on ? 'on' : ''}`;
+    var on = S.fp.indexOf(m.id) > -1;
+    ch.className = 'pchip' + (on ? ' on' : '');
     if (on) { ch.style.background = m.color; ch.style.borderColor = m.color; }
-    ch.innerHTML = `<div class="pca" style="background:${on ? 'rgba(255,255,255,.35)' : m.color}">${m.init}</div>${m.name}`;
-    ch.onclick = () => {
-      var idx = S.fp.indexOf(m.id);
-      if (idx === -1) S.fp.push(m.id); else S.fp.splice(idx,1);
-      buildForm();
-    };
+    ch.innerHTML = '<div class="pca" style="background:' + (on ? 'rgba(255,255,255,.35)' : m.color) + '">' + m.init + '</div>' + m.name;
+    ch.onclick = (function(mb, chip) {
+      return function() {
+        var idx = S.fp.indexOf(mb.id);
+        if (idx === -1) {
+          S.fp.push(mb.id);
+          chip.classList.add('on');
+          chip.style.background = mb.color;
+          chip.style.borderColor = mb.color;
+          chip.querySelector('.pca').style.background = 'rgba(255,255,255,.35)';
+        } else {
+          S.fp.splice(idx, 1);
+          chip.classList.remove('on');
+          chip.style.background = '';
+          chip.style.borderColor = '';
+          chip.querySelector('.pca').style.background = mb.color;
+        }
+      };
+    })(m, ch);
     pc.appendChild(ch);
   });
 
-  // Repeat options
-  var ro = el('rropts'); ro.innerHTML = '';
-  RROPTS.forEach(o => {
+  var ro = el('rropts');
+  ro.innerHTML = '';
+  RROPTS.forEach(function(o) {
     var d = document.createElement('div');
-    d.className = `rropt ${o.v === S.frr ? 'on' : ''}`;
+    d.className = 'rropt' + (o.v === S.frr ? ' on' : '');
     d.textContent = o.l;
-    d.onclick = () => { S.frr = o.v; buildForm(); };
+    d.onclick = (function(val, div) {
+      return function() {
+        document.querySelectorAll('#rropts .rropt').forEach(function(x) { x.classList.remove('on'); });
+        div.classList.add('on');
+        S.frr = val;
+      };
+    })(o.v, d);
     ro.appendChild(d);
   });
 
-  // Reminders (basic)
-  var rt = el('rtags'); rt.innerHTML = '';
-  REMS.forEach(o => {
+  var rt = el('rtags');
+  rt.innerHTML = '';
+  REMS.forEach(function(o) {
     var t = document.createElement('div');
-    t.className = `rtag ${S.fr.indexOf(o.m) > -1 ? 'on' : ''}`;
+    t.className = 'rtag' + (S.fr.indexOf(o.m) > -1 ? ' on' : '');
     t.textContent = o.l;
-    t.onclick = () => {
-      var idx = S.fr.indexOf(o.m);
-      if (idx === -1) S.fr.push(o.m); else S.fr.splice(idx,1);
-      buildForm();
-    };
+    t.onclick = (function(mins, tag) {
+      return function() {
+        var idx = S.fr.indexOf(mins);
+        if (idx === -1) { S.fr.push(mins); tag.classList.add('on'); }
+        else { S.fr.splice(idx, 1); tag.classList.remove('on'); }
+      };
+    })(o.m, t);
     rt.appendChild(t);
   });
 
   el('fad').onchange = function() {
-    el('ftimes').style.display = this.value === 'yes' ? 'none' : 'block';
+    el('ftimes').style.display = el('fad').value === 'yes' ? 'none' : 'block';
   };
 }
 
 function openNew() {
-  var m = FAM.find(f => S.user && f.name === S.user.name);
-  if (m && m.role !== 'owner') { toast('Only owners can create events'); return; }
+  var m = FAM.find(function(f) { return S.user && f.name === S.user.name; });
+  if (m && m.role !== 'owner') { toast('Only Rudi & Tesha can create events'); return; }
   S.eid = null; S.fc = COLS[0]; S.fp = ['rudi']; S.fr = [-60]; S.frr = '';
   el('evmodtit').textContent = 'New Event';
   el('ft').value = ''; el('fd').value = isoD(S.sel);
@@ -975,9 +1012,9 @@ function openNew() {
 }
 
 function openEdit(id) {
-  var m = FAM.find(f => S.user && f.name === S.user.name);
-  if (m && m.role !== 'owner') { toast('Only owners can edit events'); return; }
-  var ev = S.evs.find(e => e.id === id);
+  var m = FAM.find(function(f) { return S.user && f.name === S.user.name; });
+  if (m && m.role !== 'owner') { toast('Only Rudi & Tesha can edit events'); return; }
+  var ev = S.evs.find(function(e) { return e.id === id; });
   if (!ev) return;
   CM('detmod');
   S.eid = id; S.fc = ev.color; S.fp = (ev.pax || ['rudi']).slice(); S.fr = (ev.rem || [-60]).slice(); S.frr = ev.rrule || '';
@@ -1015,25 +1052,276 @@ function saveEv() {
   };
   var btn = el('savebtn');
   btn.disabled = true; btn.textContent = 'Saving...';
-  S.evs = S.evs.filter(e => e.id !== id);
-  S.evs.push(ev); lsSet('evs', S.evs);
-  btn.disabled = false; btn.textContent = 'Save Event';
-  CM('evmod'); toast(S.eid ? 'Event updated' : 'Event saved'); renderAll();
+  S.evs = S.evs.filter(function(e) { return e.id !== id; });
+  if (S.signed) {
+    gcCreate(ev).then(function(gcid) {
+      if (gcid) ev.gcalId = gcid;
+      S.evs.push(ev); lsSet('evs', S.evs);
+      btn.disabled = false; btn.textContent = 'Save Event';
+      CM('evmod'); toast(S.eid ? 'Event updated' : 'Event saved'); renderAll();
+    });
+  } else {
+    S.evs.push(ev); lsSet('evs', S.evs);
+    btn.disabled = false; btn.textContent = 'Save Event';
+    CM('evmod'); toast(S.eid ? 'Event updated' : 'Event saved'); renderAll();
+  }
 }
 
 function delEv(id) {
   if (!confirm('Delete this event?')) return;
-  S.evs = S.evs.filter(e => e.id !== id);
+  var ev = S.evs.find(function(e) { return e.id === id; });
+  if (ev && ev.gcalId && S.signed) gcDel(ev.gcalId);
+  S.evs = S.evs.filter(function(e) { return e.id !== id; });
   lsSet('evs', S.evs);
   CM('detmod'); toast('Event deleted'); renderAll();
 }
 
-/* Google Calendar stubs (kept for compatibility) */
-function initG() { return Promise.resolve(false); }
-function gcEnsure() { return Promise.resolve(); }
-function gcFetch() { return Promise.resolve(); }
+/* ── GOOGLE CALENDAR ── */
+var gInitP = null;
 
-/* SHOW APP */
+function ldScript(src) {
+  return new Promise(function(res, rej) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function initG() {
+  if (GCID.indexOf('YOUR_GOOGLE') > -1) return Promise.resolve(false);
+  if (gInitP) return gInitP;
+  gInitP = Promise.all([
+    ldScript('https://apis.google.com/js/api.js'),
+    ldScript('https://accounts.google.com/gsi/client')
+  ]).then(function() {
+    return new Promise(function(res, rej) { gapi.load('client', {callback:res, onerror:rej}); });
+  }).then(function() {
+    return gapi.client.init({
+      apiKey: GAPIKEY,
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+    });
+  }).then(function() {
+    S.gapiObj = gapi;
+    S.tc = google.accounts.oauth2.initTokenClient({
+      client_id: GCID,
+      scope: GSCOPE,
+      callback: function(resp) {
+        if (resp.error) { toast('Google error: ' + resp.error); return; }
+        S.signed = true;
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:'Bearer ' + resp.access_token}})
+          .then(function(r) { return r.json(); })
+          .then(function(info) {
+            // Match Google account to family member by email
+            var matched = FAM.find(function(f) {
+              return lsGet('email_' + f.id) === info.email;
+            });
+            var role = matched ? matched.role : 'owner';
+            var name = matched ? matched.name : (info.name || 'Family Member');
+            S.user = {name:name, email:info.email||'', role:role, isDemo:false};
+            lsSet('user', S.user);
+            // Save email for this user for future matching
+            if (matched) lsSet('email_' + matched.id, info.email);
+            showApp();
+            toast('Signed in as ' + name);
+            gcEnsure().then(function() {
+              return gcFetch();
+            }).then(function() {
+              renderAll();
+              startPoll();
+            });
+          }).catch(function() {
+            S.user = {name:'Family Member', email:'', role:'owner', isDemo:false};
+            lsSet('user', S.user);
+            showApp();
+            gcEnsure().then(function() {
+              return gcFetch();
+            }).then(function() {
+              renderAll();
+              startPoll();
+            });
+          });
+      }
+    });
+    return true;
+  }).catch(function(e) {
+    console.error('Google init error:', e);
+    gInitP = null;
+    return false;
+  });
+  return gInitP;
+}
+
+function gcEnsure() {
+  // Check if we already have a saved shared calendar ID
+  var saved = lsGet('sharedCalId');
+  if (saved) { S.calId = saved; return Promise.resolve(); }
+
+  return gapi.client.calendar.calendarList.list().then(function(r) {
+    var cals = r.result.items || [];
+    // Look for FamilySync calendar in their list (shared or owned)
+    var cal = cals.find(function(c) {
+      return c.summary === CALNAME;
+    });
+    if (cal) {
+      S.calId = cal.id;
+      lsSet('calId', cal.id);
+      lsSet('sharedCalId', cal.id);
+      return;
+    }
+    // Not found — if owner, create it and share with family
+    var member = FAM.find(function(f) { return S.user && f.name === S.user.name; });
+    var isOwner = !member || member.role === 'owner';
+    if (isOwner) {
+      return gapi.client.calendar.calendars.insert({
+        resource: {
+          summary: CALNAME,
+          description: 'Shared FamilySync Calendar — do not delete',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      }).then(function(cr) {
+        S.calId = cr.result.id;
+        lsSet('calId', cr.result.id);
+        lsSet('sharedCalId', cr.result.id);
+        // Make it accessible by sharing with all family emails
+        return gcShareCalendar(cr.result.id);
+      });
+    } else {
+      // Viewer — calendar not in their list yet, use primary and show warning
+      toast('Ask Rudi or Tesha to share the FamilySync calendar with you');
+      S.calId = 'primary';
+    }
+  }).catch(function(e) { console.error('gcEnsure error:', e); S.calId = 'primary'; });
+}
+
+function gcShareCalendar(calId) {
+  // Share calendar with all family emails stored in settings
+  var emails = lsGet('familyEmails') || [];
+  var promises = emails.map(function(email) {
+    return gapi.client.calendar.acl.insert({
+      calendarId: calId,
+      resource: { role: 'writer', scope: { type: 'user', value: email } }
+    }).catch(function(e) { console.warn('Share error for ' + email + ':', e); });
+  });
+  return Promise.all(promises);
+}
+
+function gcFetch() {
+  if (!S.signed || !S.gapiObj) return Promise.resolve();
+  var now = new Date();
+  var tMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
+  var tMax = new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString();
+  return gapi.client.calendar.events.list({
+    calendarId: S.calId || 'primary',
+    timeMin: tMin, timeMax: tMax,
+    singleEvents: true, orderBy: 'startTime', maxResults: 500,
+    showDeleted: false
+  }).then(function(r) {
+    var items = r.result.items || [];
+    // Separate todos from regular events
+    var todoItems = items.filter(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      return ep.fsType === 'todo';
+    });
+    var eventItems = items.filter(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      return ep.fsType !== 'todo';
+    });
+    // Process todos
+    var gcTodos = todoItems.map(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      return {
+        id: it.id,
+        text: it.summary || '',
+        done: ep.fsDone === 'true',
+        createdAt: it.created || new Date().toISOString(),
+        gcalId: it.id
+      };
+    });
+    var localOnlyTodos = TODOS.filter(function(t) { return !t.gcalId; });
+    TODOS = gcTodos.concat(localOnlyTodos);
+    saveTodos();
+    // Process regular events
+    var gcevs = eventItems.map(function(it) {
+      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
+      var paxRaw = ep.fsPax || '["rudi"]';
+      var remRaw = ep.fsRem || '[-60]';
+      var pax = ['rudi'], rem = [-60];
+      try { pax = JSON.parse(paxRaw); } catch(e) {}
+      try { rem = JSON.parse(remRaw); } catch(e) {}
+      return {
+        id: it.id,
+        title: it.summary || '(No title)',
+        date: (it.start.date || it.start.dateTime || '').split('T')[0],
+        startTime: it.start.dateTime || null,
+        endTime: it.end.dateTime || null,
+        allDay: !!it.start.date,
+        color: ep.fsColor || COLS[0],
+        location: it.location || '',
+        notes: it.description || '',
+        pax: pax,
+        rrule: (it.recurrence && it.recurrence[0]) ? it.recurrence[0].replace('RRULE:', '') : '',
+        rem: rem,
+        gcalId: it.id,
+        updated: it.updated || ''
+      };
+    });
+    var localOnly = S.evs.filter(function(e) { return !e.gcalId; });
+    S.evs = gcevs.concat(localOnly);
+    lsSet('evs', S.evs);
+    lsSet('lastSync', new Date().toISOString());
+    return gcevs.length;
+  }).catch(function(e) { console.error('gcFetch error:', e); });
+}
+
+// Poll for new events + todos every 30 seconds when signed in
+var gcPollTimer = null;
+function startPoll() {
+  if (gcPollTimer) clearInterval(gcPollTimer);
+  gcPollTimer = setInterval(function() {
+    if (!S.signed) return;
+    gcFetch().then(function(count) {
+      if (count !== undefined) {
+        renderAll();
+        renderTodoStrip();
+        renderTodoModal();
+      }
+    });
+  }, 30000);
+}
+
+function gcCreate(ev) {
+  if (!S.signed || !S.gapiObj) return Promise.resolve(null);
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var res = {
+    summary: ev.title, description: ev.notes || '', location: ev.location || '',
+    extendedProperties: {private:{fsColor:ev.color, fsPax:JSON.stringify(ev.pax), fsRem:JSON.stringify(ev.rem)}}
+  };
+  if (ev.allDay) { res.start = {date:ev.date}; res.end = {date:ev.date}; }
+  else { res.start = {dateTime:new Date(ev.startTime).toISOString(), timeZone:tz}; res.end = {dateTime:new Date(ev.endTime).toISOString(), timeZone:tz}; }
+  if (ev.rrule) res.recurrence = ['RRULE:' + ev.rrule];
+  if (ev.rem && ev.rem.length) res.reminders = {useDefault:false, overrides:ev.rem.map(function(m) { return {method:'popup', minutes:Math.abs(m)}; })};
+  return gapi.client.calendar.events.insert({calendarId:S.calId||'primary', resource:res})
+    .then(function(r) { return r.result.id; })
+    .catch(function(e) { console.error('gcCreate error:', e); return null; });
+}
+
+function gcDel(gcid) {
+  if (!S.signed || !S.gapiObj || !gcid) return;
+  gapi.client.calendar.events.delete({calendarId:S.calId||'primary', eventId:gcid})
+    .catch(function(e) { console.error('gcDel error:', e); });
+}
+
+var gcPollTimer = null;
+
+function startPoll() {
+  if (gcPollTimer) clearInterval(gcPollTimer);
+  gcPollTimer = setInterval(function() {
+    if (!S.signed) return;
+    gcFetch().then(function() { renderAll(); });
+  }, 30000);
+}
+
+/* ── SHOW APP ── */
 function showApp() {
   el('auth').classList.add('hidden');
   el('app').classList.remove('hidden');
@@ -1043,11 +1331,24 @@ function showApp() {
 
 function openWhoAmI() {
   if (!S.signed) { toast('Connect Google first'); return; }
-  // Simplified for demo
-  toast('Role selection available in full version');
+  var chosen = null;
+  for (var i = 0; i < FAM.length; i++) {
+    if (confirm('Are you ' + FAM[i].name + '?')) { chosen = FAM[i]; break; }
+  }
+  if (chosen) {
+    lsSet('email_' + chosen.id, S.user.email);
+    S.user.name = chosen.name;
+    S.user.role = chosen.role;
+    lsSet('user', S.user);
+    toast('Welcome, ' + chosen.name + '!');
+    renderAll();
+    setupFAB();
+  }
 }
 
-/* WIRE UP */
+/* ── WIRE UP BUTTONS ── */
+
+// Auth buttons
 el('dbtn').onclick = function() {
   S.demo = true; S.signed = false;
   S.user = {name:'Rudi', email:'demo@familysync.app', role:'owner', isDemo:true};
@@ -1056,66 +1357,135 @@ el('dbtn').onclick = function() {
   lsSet('evs', S.evs);
   lsTodos();
   showApp();
-  setTimeout(() => toast('Welcome to FamilySync Demo!'), 300);
+  setTimeout(function() { toast('Welcome! Running in demo mode'); }, 400);
 };
 
 el('gbtn').onclick = function() {
-  toast('Google sign-in not configured in this demo. Use Demo Mode.');
+  var btn = el('gbtn');
+  btn.textContent = 'Connecting...';
+  btn.disabled = true;
+  initG().then(function(ok) {
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Continue with Google';
+    btn.disabled = false;
+    if (!ok) { toast('Google not configured - use Demo Mode'); return; }
+    S.tc.requestAccessToken({prompt:'select_account'});
+  }).catch(function() {
+    btn.textContent = 'Continue with Google';
+    btn.disabled = false;
+    toast('Connection failed - use Demo Mode');
+  });
 };
 
+// Sign out
 el('sorow').onclick = function() {
-  if (confirm('Sign out?')) location.reload();
+  if (!confirm('Sign out?')) return;
+  if (gcPollTimer) clearInterval(gcPollTimer);
+  lsSet('user', null);
+  S.user = null; S.signed = false; S.demo = false;
+  el('app').classList.add('hidden');
+  el('auth').classList.remove('hidden');
 };
 
+// GCal connect (in settings)
+el('gcrow').onclick = function() {
+  if (S.demo) { toast('Sign out of demo mode first'); return; }
+  initG().then(function(ok) {
+    if (!ok) { toast('Google credentials not configured'); return; }
+    S.tc.requestAccessToken({prompt:'select_account'});
+  });
+};
+
+// Sync now button
+el('syncnowrow').onclick = function() {
+  if (!S.signed) return;
+  toast('Syncing...');
+  gcFetch().then(function() {
+    lsSet('lastSync', new Date().toISOString());
+    renderAll();
+    toast('Synced ✓');
+  });
+};
+
+// Settings toggles
+el('stog').onclick = function() { this.classList.toggle('on'); };
+el('dtog').onclick = function() { this.classList.toggle('on'); };
+el('rtog').onclick = function() { this.classList.toggle('on'); };
+
+// Bottom nav - fix closure with data attribute read inside handler
+document.querySelectorAll('.nit').forEach(function(navItem) {
+  navItem.onclick = function() { sn(this.dataset.n); };
+});
+
+// View tabs - fix closure
+document.querySelectorAll('.vtab').forEach(function(tab) {
+  tab.onclick = function() { sv(this.dataset.v); };
+});
+
+// FAB and calendar nav
 el('fab').onclick = openNew;
-el('prevM').onclick = function() { S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() - 1, 1); renderAll(); };
-el('nextM').onclick = function() { S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() + 1, 1); renderAll(); };
-el('todaybtn').onclick = function() { S.cur = new Date(); S.sel = new Date(); renderAll(); sv('ahead'); };
+el('prevM').onclick = function() {
+  S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() - 1, 1);
+  renderAll();
+};
+el('nextM').onclick = function() {
+  S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() + 1, 1);
+  renderAll();
+};
+el('todaybtn').onclick = function() {
+  S.cur = new Date(); S.sel = new Date();
+  renderAll(); sv('ahead');
+};
 
-document.querySelectorAll('.nit').forEach(navItem => navItem.onclick = () => sn(navItem.dataset.n));
-document.querySelectorAll('.vtab').forEach(tab => tab.onclick = () => sv(tab.dataset.v));
-
+// Save event button
 el('savebtn').onclick = saveEv;
 
+// Todo input enter key
+el('todo-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') addTodo();
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.overlay').forEach(function(overlay) {
+  overlay.onclick = function(e) {
+    if (e.target === overlay) CM(overlay.id);
+  };
+});
+
+/* ── SAMPLE DATA ── */
 function sampleEvs() {
   var n = new Date(), y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
   function fmt(day, h, mn) { return new Date(y, m, day, h, mn).toISOString(); }
-  function iso(day) { var dt = new Date(y, m, day); return dt.getFullYear() + '-' + pad(dt.getMonth()+1) + '-' + pad(dt.getDate()); }
+  function iso(day) {
+    var date = new Date(y, m, day);
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+  }
   return [
-    {id:'s1', title:'School Drop-off', date:iso(d), startTime:fmt(d,8,15), endTime:fmt(d,8,45), allDay:false, color:'#1d6fb5', pax:['rudi','cassie','tyler'], location:'Harrison College', rrule:'FREQ=WEEKLY', rem:[-30]},
-    {id:'s2', title:"Cassie's School Play", date:iso(d+3), startTime:fmt(d+3,18,30), endTime:fmt(d+3,20,0), allDay:false, color:'#d97706', pax:['rudi','tesha','cassie'], location:'Harrison College Main Hall', rrule:'', rem:[-60]},
-    {id:'s3', title:"Tyler's Football Practice", date:iso(d+1), startTime:fmt(d+1,16,0), endTime:fmt(d+1,17,30), allDay:false, color:'#1d6fb5', pax:['tyler','rudi'], rrule:'FREQ=WEEKLY;INTERVAL=2', rem:[-60]},
+    {id:'s1', title:'School Drop-off', date:iso(d), startTime:fmt(d,8,15), endTime:fmt(d,8,45), allDay:false, color:'#1d6fb5', pax:['rudi','cassie','tyler'], location:'Harrison College', notes:'', rrule:'FREQ=WEEKLY', rem:[-30], createdAt:new Date().toISOString()},
+    {id:'s2', title:"Cassie's School Play", date:iso(d+3), startTime:fmt(d+3,18,30), endTime:fmt(d+3,20,0), allDay:false, color:'#d97706', pax:['rudi','tesha','cassie'], location:'Harrison College Main Hall', notes:'Year 9 drama performance', rrule:'', rem:[-60,-1440], createdAt:new Date().toISOString()},
+    {id:'s3', title:"Tyler's Football Practice", date:iso(d+1), startTime:fmt(d+1,16,0), endTime:fmt(d+1,17,30), allDay:false, color:'#1d6fb5', pax:['tyler','rudi'], location:'National Stadium, Bridgetown', notes:'', rrule:'FREQ=WEEKLY', rem:[-60], createdAt:new Date().toISOString()},
+    {id:'s4', title:'Dentist - Cassie & Tyler', date:iso(d+5), startTime:fmt(d+5,14,0), endTime:fmt(d+5,15,0), allDay:false, color:'#dc2626', pax:['tesha','cassie','tyler'], location:'Bay Street Clinic', notes:'', rrule:'', rem:[-60,-1440], createdAt:new Date().toISOString()},
+    {id:'s5', title:'Family Dinner', date:iso(d+2), startTime:fmt(d+2,19,0), endTime:fmt(d+2,21,0), allDay:false, color:'#2d6a4f', pax:['rudi','tesha','cassie','tyler'], location:'Home', notes:'Everyone home by 7pm', rrule:'', rem:[-60], createdAt:new Date().toISOString()}
   ];
 }
 
-/* INIT */
+/* ── INIT ── */
 (function() {
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function() {});
   var saved = lsGet('user');
   S.evs = lsGet('evs') || sampleEvs();
   S.calId = lsGet('calId') || null;
-  lsTodos();
   S.cur = new Date(); S.sel = new Date();
+  lsTodos();
   if (saved) {
     S.user = saved; S.demo = saved.isDemo || false;
     showApp();
-  } else {
-    setupToggles();
+    if (!S.demo && GCID.indexOf('YOUR_GOOGLE') === -1) {
+      initG().then(function(ok) {
+        if (ok && S.tc) S.tc.requestAccessToken({prompt:''});
+      }).catch(function() {});
+    }
   }
-  // Ensure initial render
-  setTimeout(() => {
-    renderAhead();
-    renderMonth();
-    renderWeek();
-  }, 100);
 })();
-
-function setupToggles() {
-  ['stog','dtog','rtog'].forEach(id => {
-    var tog = el(id);
-    if (tog) tog.onclick = () => tog.classList.toggle('on');
-  });
-}
 </script>
 </body>
 </html>
