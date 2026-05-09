@@ -138,7 +138,7 @@ textarea.finp{resize:none;min-height:70px}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cpkr{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
 .csw{width:30px;height:30px;border-radius:50%;cursor:pointer;position:relative}
-.csw.on::after{content:'checkmark';content:'\2713';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800}
+.csw.on::after{content:'\2713';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800}
 .pchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}
 .pchip{display:flex;align-items:center;gap:5px;padding:5px 11px 5px 7px;border-radius:999px;border:1.5px solid var(--bdr);font-size:13px;font-weight:600;cursor:pointer}
 .pchip.on{color:#fff;border-color:transparent}
@@ -253,7 +253,8 @@ textarea.finp{resize:none;min-height:70px}
         <div id="gcbanner"></div>
         <div class="svcard">
           <div class="svrow" id="gcrow"><span class="svi">&#128197;</span><div class="svb"><div class="svl">Google Account</div><div class="svs" id="gcstat">Not connected</div></div><span style="color:var(--t3)">&#8250;</span></div>
-          <div class="svrow" id="syncnowrow" style="display:none"><span class="svi">&#128260;</span><div class="svb"><div class="svl">Sync Now</div><div class="svs" id="lastsync">Tap to refresh events</div></div><span style="color:var(--green)">&#8250;</span></div>
+          <div class="svrow"><span class="svi">&#128260;</span><div class="svb"><div class="svl">Auto-sync events</div><div class="svs">Push events to Google Calendar</div></div><div class="tog on" id="stog"></div></div>
+          <div class="svrow" id="syncnowrow" style="display:none"><span class="svi">&#9654;</span><div class="svb"><div class="svl">Sync Now</div><div class="svs" id="lastsync">Tap to refresh</div></div><span style="color:var(--green)">&#8250;</span></div>
           <div class="svrow" onclick="openWhoAmI()" style="cursor:pointer"><span class="svi">&#128100;</span><div class="svb"><div class="svl">Who am I?</div><div class="svs" id="whoami-text">Tap to set your family role</div></div><span style="color:var(--t3)">&#8250;</span></div>
         </div>
       </div>
@@ -362,7 +363,7 @@ var REMS = [
 
 var S = {
   user:null, demo:false, signed:false, gapiObj:null, tc:null, calId:null,
-  view:'day', nav:'cal', cur:new Date(), sel:new Date(),
+  view:'ahead', nav:'cal', cur:new Date(), sel:new Date(),
   evs:[], eid:null,
   fc:COLS[0], fp:['rudi'], fr:[-60], frr:''
 };
@@ -667,37 +668,35 @@ function sv(v) {
   ['ahead-view','month-view','week-view','day-view','settings-view'].forEach(function(id) {
     var e = el(id);
     if (!e) return;
-    if (id === 'settings-view') { e.style.display = 'none'; e.classList.remove('on'); }
-    else if (id === 'ahead-view') { e.style.display = 'none'; e.classList.remove('on'); }
-    else { e.classList.add('hidden'); }
+    if (id === 'settings-view') { 
+      e.style.display = (v === 'settings') ? 'block' : 'none'; 
+    } else if (id === 'ahead-view') { 
+      e.style.display = (v === 'ahead') ? 'block' : 'none'; 
+    } else { 
+      e.classList.toggle('hidden', id !== v + '-view'); 
+    }
   });
-  document.querySelectorAll('.vtab').forEach(function(t) { t.classList.toggle('on', t.dataset.v === v); });
+  document.querySelectorAll('.vtab').forEach(function(t) { 
+    t.classList.toggle('on', t.dataset.v === v); 
+  });
   if (v === 'settings') {
-    el('settings-view').style.display = 'block';
     el('vtabs').style.display = 'none';
-  } else if (v === 'ahead') {
-    el('ahead-view').style.display = 'block';
-    el('vtabs').style.display = 'flex';
-    renderAhead();
   } else {
-    el(v + '-view').classList.remove('hidden');
     el('vtabs').style.display = 'flex';
   }
-  el('tb-month').textContent = S.cur.toLocaleDateString('en-US', {month:'long', year:'numeric'});
 }
 
 function sn(n) {
   S.nav = n;
-  document.querySelectorAll('.nit').forEach(function(i) { i.classList.toggle('on', i.dataset.n === n); });
+  document.querySelectorAll('.nit').forEach(function(i) { 
+    i.classList.toggle('on', i.dataset.n === n); 
+  });
   el('fab').parentElement.style.visibility = (n === 'set') ? 'hidden' : 'visible';
   if (n === 'set') {
-    ['month-view','week-view','day-view'].forEach(function(id) { el(id).classList.add('hidden'); });
     sv('settings');
   } else {
     el('settings-view').style.display = 'none';
-    el('settings-view').classList.remove('on');
-    el('vtabs').style.display = 'flex';
-    sv(S.view === 'month' || S.view === 'week' || S.view === 'day' || S.view === 'ahead' ? S.view : 'ahead');
+    sv(S.view);
   }
 }
 
@@ -925,7 +924,6 @@ function initG() {
         fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:'Bearer ' + resp.access_token}})
           .then(function(r) { return r.json(); })
           .then(function(info) {
-            // Match Google account to family member by email
             var matched = FAM.find(function(f) {
               return lsGet('email_' + f.id) === info.email;
             });
@@ -933,7 +931,6 @@ function initG() {
             var name = matched ? matched.name : (info.name || 'Family Member');
             S.user = {name:name, email:info.email||'', role:role, isDemo:false};
             lsSet('user', S.user);
-            // Save email for this user for future matching
             if (matched) lsSet('email_' + matched.id, info.email);
             showApp();
             toast('Signed in as ' + name);
@@ -966,13 +963,11 @@ function initG() {
 }
 
 function gcEnsure() {
-  // Check if we already have a saved shared calendar ID
   var saved = lsGet('sharedCalId');
   if (saved) { S.calId = saved; return Promise.resolve(); }
 
   return gapi.client.calendar.calendarList.list().then(function(r) {
     var cals = r.result.items || [];
-    // Look for FamilySync calendar in their list (shared or owned)
     var cal = cals.find(function(c) {
       return c.summary === CALNAME;
     });
@@ -982,7 +977,6 @@ function gcEnsure() {
       lsSet('sharedCalId', cal.id);
       return;
     }
-    // Not found — if owner, create it and share with family
     var member = FAM.find(function(f) { return S.user && f.name === S.user.name; });
     var isOwner = !member || member.role === 'owner';
     if (isOwner) {
@@ -996,11 +990,9 @@ function gcEnsure() {
         S.calId = cr.result.id;
         lsSet('calId', cr.result.id);
         lsSet('sharedCalId', cr.result.id);
-        // Make it accessible by sharing with all family emails
         return gcShareCalendar(cr.result.id);
       });
     } else {
-      // Viewer — calendar not in their list yet, use primary and show warning
       toast('Ask Rudi or Tesha to share the FamilySync calendar with you');
       S.calId = 'primary';
     }
@@ -1008,7 +1000,6 @@ function gcEnsure() {
 }
 
 function gcShareCalendar(calId) {
-  // Share calendar with all family emails stored in settings
   var emails = lsGet('familyEmails') || [];
   var promises = emails.map(function(email) {
     return gapi.client.calendar.acl.insert({
@@ -1031,7 +1022,6 @@ function gcFetch() {
     showDeleted: false
   }).then(function(r) {
     var items = r.result.items || [];
-    // Separate todos from regular events
     var todoItems = items.filter(function(it) {
       var ep = (it.extendedProperties && it.extendedProperties.private) || {};
       return ep.fsType === 'todo';
@@ -1040,21 +1030,6 @@ function gcFetch() {
       var ep = (it.extendedProperties && it.extendedProperties.private) || {};
       return ep.fsType !== 'todo';
     });
-    // Process todos
-    var gcTodos = todoItems.map(function(it) {
-      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
-      return {
-        id: it.id,
-        text: it.summary || '',
-        done: ep.fsDone === 'true',
-        createdAt: it.created || new Date().toISOString(),
-        gcalId: it.id
-      };
-    });
-    var localOnlyTodos = TODOS.filter(function(t) { return !t.gcalId; });
-    TODOS = gcTodos.concat(localOnlyTodos);
-    saveTodos();
-    // Process regular events
     var gcevs = eventItems.map(function(it) {
       var ep = (it.extendedProperties && it.extendedProperties.private) || {};
       var paxRaw = ep.fsPax || '["rudi"]';
@@ -1087,18 +1062,13 @@ function gcFetch() {
   }).catch(function(e) { console.error('gcFetch error:', e); });
 }
 
-// Poll for new events + todos every 30 seconds when signed in
 var gcPollTimer = null;
 function startGcalPolling() {
   if (gcPollTimer) clearInterval(gcPollTimer);
   gcPollTimer = setInterval(function() {
     if (!S.signed) return;
-    gcFetch().then(function(count) {
-      if (count !== undefined) {
-        renderAll();
-        renderTodoStrip();
-        renderTodoModal();
-      }
+    gcFetch().then(function() {
+      renderAll();
     });
   }, 30000);
 }
@@ -1151,6 +1121,8 @@ function openWhoAmI() {
 }
 
 /* ── WIRE UP BUTTONS ── */
+
+// Auth buttons
 el('dbtn').onclick = function() {
   S.demo = true; S.signed = false;
   S.user = {name:'Rudi', email:'demo@familysync.app', role:'owner', isDemo:true};
@@ -1171,344 +1143,98 @@ el('gbtn').onclick = function() {
     if (!ok) { toast('Google not configured - use Demo Mode'); return; }
     S.tc.requestAccessToken({prompt:'select_account'});
   }).catch(function() {
-    btn.textContent = 'Continue with Google'; btn.disabled = false;
-    toast('Google connection failed - use Demo Mode');
+    btn.textContent = 'Continue with Google';
+    btn.disabled = false;
+    toast('Connection failed - use Demo Mode');
   });
 };
 
+// Sign out
 el('sorow').onclick = function() {
   if (!confirm('Sign out?')) return;
-  lsSet('user', null); S.user = null; S.signed = false; S.demo = false;
+  if (gcPollTimer) clearInterval(gcPollTimer);
+  lsSet('user', null);
+  S.user = null; S.signed = false; S.demo = false;
   el('app').classList.add('hidden');
   el('auth').classList.remove('hidden');
 };
 
+// GCal connect (in settings)
 el('gcrow').onclick = function() {
   if (S.demo) { toast('Sign out of demo mode first'); return; }
   initG().then(function(ok) {
-    if (!ok) { toast('⚠️ Google credentials not configured — see README'); return; }
+    if (!ok) { toast('Google credentials not configured'); return; }
     S.tc.requestAccessToken({prompt:'select_account'});
   });
 };
 
 // Sync now button
-var syncnow = el('syncnowrow');
-if (syncnow) {
-  syncnow.onclick = function() {
-    if (!S.signed) return;
-    toast('Syncing...');
-    gcFetch().then(function() {
-      lsSet('lastSync', new Date().toISOString());
-      renderAll();
-      toast('Synced ✓');
-    });
-  };
+el('syncnowrow').onclick = function() {
+  if (!S.signed) return;
+  toast('Syncing...');
+  gcFetch().then(function() {
+    lsSet('lastSync', new Date().toISOString());
+    renderAll();
+    toast('Synced ✓');
+  });
+};
+
+// Settings toggles - safe wiring
+function setupToggles() {
+  var stog = el('stog');
+  if (stog) stog.onclick = function() { this.classList.toggle('on'); };
+  var dtog = el('dtog');
+  if (dtog) dtog.onclick = function() { this.classList.toggle('on'); };
+  var rtog = el('rtog');
+  if (rtog) rtog.onclick = function() { this.classList.toggle('on'); };
 }
 
-// Who am I — handled via openWhoAmI function called from settings row onclick
+// Bottom nav
+document.querySelectorAll('.nit').forEach(function(navItem) {
+  navItem.onclick = function() { 
+    sn(this.dataset.n); 
+  };
+});
 
-el('stog').onclick = function() { this.classList.toggle('on'); };
-el('dtog').onclick = function() { this.classList.toggle('on'); };
-el('rtog').onclick = function() { this.classList.toggle('on'); };
+// View tabs
+document.querySelectorAll('.vtab').forEach(function(tab) {
+  tab.onclick = function() { 
+    sv(this.dataset.v); 
+  };
+});
 
-document.querySelectorAll('.nit').forEach(function(n) { n.onclick = function() { sn(n.dataset.n); }; });
-document.querySelectorAll('.vtab').forEach(function(t) { t.onclick = function() { sv(t.dataset.v); }; });
-
+// FAB and calendar nav
 el('fab').onclick = openNew;
-el('prevM').onclick = function() { S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() - 1, 1); renderAll(); };
-el('nextM').onclick = function() { S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() + 1, 1); renderAll(); };
-el('todaybtn').onclick = function() { S.cur = new Date(); S.sel = new Date(); renderAll(); sv('day'); };
+el('prevM').onclick = function() {
+  S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() - 1, 1);
+  renderAll();
+};
+el('nextM').onclick = function() {
+  S.cur = new Date(S.cur.getFullYear(), S.cur.getMonth() + 1, 1);
+  renderAll();
+};
+el('todaybtn').onclick = function() {
+  S.cur = new Date(); S.sel = new Date();
+  renderAll(); sv('ahead');
+};
+
+// Save event button
 el('savebtn').onclick = saveEv;
-document.querySelectorAll('.overlay').forEach(function(o) {
-  o.onclick = function(e) { if (e.target === o) CM(o.id); };
-});
 
-/* ── TODO LIST ── */
-var TODOS = [];
-
-// Load todos from localStorage (local cache)
-function lsTodos() {
-  TODOS = lsGet('todos') || [];
+// Todo input enter key
+var todoInput = el('todo-input');
+if (todoInput) {
+  todoInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addTodo();
+  });
 }
 
-// Save todos to localStorage
-function saveTodos() {
-  lsSet('todos', TODOS);
-}
-
-// Create a todo — saves locally + pushes to GCal if signed in
-function addTodo() {
-  var inp = el('todo-input');
-  var text = inp.value.trim();
-  if (!text) return;
-  var todo = {
-    id: 'td' + Date.now(),
-    text: text,
-    done: false,
-    createdAt: new Date().toISOString(),
-    gcalId: null
+// Close modals on overlay click
+document.querySelectorAll('.overlay').forEach(function(overlay) {
+  overlay.onclick = function(e) {
+    if (e.target === overlay) CM(overlay.id);
   };
-  TODOS.push(todo);
-  inp.value = '';
-  saveTodos();
-  renderTodoModal();
-  renderTodoStrip();
-  // Sync to Google Calendar
-  if (S.signed && S.gapiObj) {
-    gcTodoCreate(todo).then(function(gcid) {
-      if (gcid) {
-        todo.gcalId = gcid;
-        saveTodos();
-      }
-    });
-  }
-}
-
-// Toggle done state — updates locally + GCal
-function toggleTodo(id) {
-  var t = TODOS.find(function(x) { return x.id === id; });
-  if (!t) return;
-  t.done = !t.done;
-  saveTodos();
-  renderTodoStrip();
-  renderTodoModal();
-  if (S.signed && S.gapiObj && t.gcalId) {
-    gcTodoUpdate(t);
-  }
-}
-
-// Delete todo — removes locally + from GCal
-function deleteTodo(id) {
-  var t = TODOS.find(function(x) { return x.id === id; });
-  if (t && t.gcalId && S.signed && S.gapiObj) {
-    gcTodoDel(t.gcalId);
-  }
-  TODOS = TODOS.filter(function(x) { return x.id !== id; });
-  saveTodos();
-  renderTodoStrip();
-  renderTodoModal();
-}
-
-// Fetch all todos from GCal (called after gcFetch)
-function gcFetchTodos() {
-  if (!S.signed || !S.gapiObj) return Promise.resolve();
-  var calId = S.calId || 'primary';
-  // Look for events tagged as todos — fetch far back and far forward
-  return gapi.client.calendar.events.list({
-    calendarId: calId,
-    privateExtendedProperty: 'fsType=todo',
-    singleEvents: true,
-    maxResults: 200,
-    showDeleted: false
-  }).then(function(r) {
-    var items = r.result.items || [];
-    var gcTodos = items.map(function(it) {
-      var ep = (it.extendedProperties && it.extendedProperties.private) || {};
-      return {
-        id: it.id,
-        text: it.summary || '',
-        done: ep.fsDone === 'true',
-        createdAt: it.created || new Date().toISOString(),
-        gcalId: it.id
-      };
-    });
-    // Merge: replace gcal todos, keep any local-only ones
-    var localOnly = TODOS.filter(function(t) { return !t.gcalId; });
-    TODOS = gcTodos.concat(localOnly);
-    saveTodos();
-    renderTodoStrip();
-    renderTodoModal();
-  }).catch(function(e) {
-    console.error('gcFetchTodos error:', e);
-  });
-}
-
-// Create a todo in GCal as a special all-day event
-function gcTodoCreate(todo) {
-  if (!S.signed || !S.gapiObj) return Promise.resolve(null);
-  var calId = S.calId || 'primary';
-  var today = new Date();
-  var dateStr = today.getFullYear() + '-' +
-    String(today.getMonth() + 1).padStart(2, '0') + '-' +
-    String(today.getDate()).padStart(2, '0');
-  return gapi.client.calendar.events.insert({
-    calendarId: calId,
-    resource: {
-      summary: todo.text,
-      start: { date: dateStr },
-      end:   { date: dateStr },
-      extendedProperties: {
-        private: {
-          fsType: 'todo',
-          fsDone: 'false',
-          fsCreatedAt: todo.createdAt
-        }
-      }
-    }
-  }).then(function(r) {
-    return r.result.id;
-  }).catch(function(e) {
-    console.error('gcTodoCreate error:', e);
-    return null;
-  });
-}
-
-// Update done state of a todo in GCal
-function gcTodoUpdate(todo) {
-  if (!S.signed || !S.gapiObj || !todo.gcalId) return;
-  var calId = S.calId || 'primary';
-  gapi.client.calendar.events.patch({
-    calendarId: calId,
-    eventId: todo.gcalId,
-    resource: {
-      extendedProperties: {
-        private: {
-          fsType: 'todo',
-          fsDone: todo.done ? 'true' : 'false'
-        }
-      }
-    }
-  }).catch(function(e) { console.error('gcTodoUpdate error:', e); });
-}
-
-// Delete a todo from GCal
-function gcTodoDel(gcalId) {
-  if (!S.signed || !S.gapiObj || !gcalId) return;
-  var calId = S.calId || 'primary';
-  gapi.client.calendar.events.delete({
-    calendarId: calId,
-    eventId: gcalId
-  }).catch(function(e) { console.error('gcTodoDel error:', e); });
-}
-
-function openTodo() {
-  renderTodoModal();
-  OM('todomod');
-  setTimeout(function() { el('todo-input').focus(); }, 300);
-}
-
-function renderTodoStrip() {
-  var strip = el('todo-strip');
-  var active = TODOS.filter(function(t) { return !t.done; });
-  if (TODOS.length === 0) { strip.style.display = 'none'; return; }
-  strip.style.display = 'block';
-  strip.innerHTML = '';
-  var title = document.createElement('div');
-  title.className = 'todo-strip-title';
-  title.textContent = '\u2713 TO-DO (' + active.length + ' remaining)' + (S.signed ? ' \u2601' : ' (local)');
-  strip.appendChild(title);
-  TODOS.forEach(function(t) {
-    var row = document.createElement('div');
-    row.className = 'todo-strip-item';
-    var cb = document.createElement('div');
-    cb.className = 'todo-cb' + (t.done ? ' done' : '');
-    cb.onclick = (function(id) { return function() { toggleTodo(id); }; })(t.id);
-    var txt = document.createElement('span');
-    txt.className = 'todo-text' + (t.done ? ' done' : '');
-    txt.textContent = t.text;
-    var del = document.createElement('button');
-    del.className = 'todo-del';
-    del.innerHTML = '&#x2715;';
-    del.onclick = (function(id) { return function() { deleteTodo(id); }; })(t.id);
-    row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
-    strip.appendChild(row);
-  });
-}
-
-function renderTodoModal() {
-  var list = el('todo-list-modal');
-  if (!list) return;
-  list.innerHTML = '';
-  if (TODOS.length === 0) {
-    var emp = document.createElement('div');
-    emp.className = 'todo-empty';
-    emp.textContent = 'No to-dos yet — add one above!';
-    list.appendChild(emp);
-    return;
-  }
-  TODOS.forEach(function(t) {
-    var row = document.createElement('div');
-    row.className = 'todo-modal-item';
-    var cb = document.createElement('div');
-    cb.className = 'todo-cb' + (t.done ? ' done' : '');
-    cb.onclick = (function(id) { return function() { toggleTodo(id); }; })(t.id);
-    var txt = document.createElement('span');
-    txt.className = 'todo-text' + (t.done ? ' done' : '');
-    txt.style.flex = '1';
-    txt.textContent = t.text;
-    var del = document.createElement('button');
-    del.className = 'todo-del';
-    del.innerHTML = '&#x2715;';
-    del.onclick = (function(id) { return function() { deleteTodo(id); }; })(t.id);
-    row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
-    list.appendChild(row);
-  });
-}
-
-/* ── ENTER KEY for todo input ── */
-document.addEventListener('DOMContentLoaded', function() {
-  var inp = el('todo-input');
-  if (inp) inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTodo(); });
 });
-
-/* ── 7-DAY AHEAD VIEW ── */
-function renderAhead() {
-  var list = el('ahead-list');
-  if (!list) return;
-  list.innerHTML = '';
-  var today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  var hasAny = false;
-  for (var i = 0; i < 7; i++) {
-    var day = new Date(today);
-    day.setDate(today.getDate() + i);
-    var evs = evsForDate(day).sort(function(a, b) {
-      if (!a.startTime) return -1;
-      if (!b.startTime) return 1;
-      return new Date(a.startTime) - new Date(b.startTime);
-    });
-
-    var todayFlag = (i === 0);
-    var dayLabel = todayFlag ? 'Today' : shortDay(day);
-    var dateLabel = day.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-
-    var section = document.createElement('div');
-    section.className = 'ahead-day';
-
-    var hdrClass = 'ahead-day-hdr' + (todayFlag ? ' is-today' : '');
-    section.innerHTML = '<div class="' + hdrClass + '">'
-      + '<span class="ahead-day-name">' + dayLabel + '</span>'
-      + '<span class="ahead-day-date">' + dateLabel + '</span>'
-      + '</div>';
-
-    if (evs.length === 0) {
-      section.innerHTML += '<div class="ahead-empty">No events</div>';
-    } else {
-      hasAny = true;
-      evs.forEach(function(ev) {
-        var st = ev.startTime ? new Date(ev.startTime) : null;
-        var en = ev.endTime ? new Date(ev.endTime) : null;
-        var ph = (ev.pax || []).map(function(pid) {
-          var m = FAM.find(function(f) { return f.id === pid; });
-          return m ? '<div class="pav" style="background:' + m.color + '">' + m.init + '</div>' : '';
-        }).join('');
-        var card = document.createElement('div');
-        card.className = 'ecard';
-        card.style.borderLeftColor = ev.color;
-        card.innerHTML = '<div class="etcol">'
-          + (ev.allDay ? '<span class="et2">All day</span>' : (st ? '<span class="et">' + fmtTime(st) + '</span>' + (en ? '<span class="et2">' + fmtTime(en) + '</span>' : '') : ''))
-          + '</div><div class="ebody"><div class="etit">' + ev.title + '</div>'
-          + '<div class="emeta">' + (ev.location ? '<span>&#128205; ' + ev.location + '</span>' : '') + (ev.rrule ? '<span>&#128260;</span>' : '') + '</div>'
-          + '<div class="epax">' + ph + '</div></div>';
-        card.onclick = (function(e) { return function() { showDet(e); }; })(ev);
-        section.appendChild(card);
-      });
-    }
-    list.appendChild(section);
-  }
-  renderTodoStrip();
-}
 
 /* ── SAMPLE DATA ── */
 function sampleEvs() {
@@ -1534,7 +1260,6 @@ function sampleEvs() {
   S.evs = lsGet('evs') || sampleEvs();
   S.calId = lsGet('calId') || null;
   S.cur = new Date(); S.sel = new Date();
-  lsTodos();
   if (saved) {
     S.user = saved; S.demo = saved.isDemo || false;
     showApp();
@@ -1543,7 +1268,11 @@ function sampleEvs() {
         if (ok && S.tc) S.tc.requestAccessToken({prompt:''});
       }).catch(function() {});
     }
+  } else {
+    // Initial wiring after DOM ready
+    setupToggles();
   }
+  setupToggles(); // always run
 })();
 </script>
 </body>
