@@ -780,7 +780,8 @@ function renderSet() {
     el('gcstat').textContent = 'Connected as ' + (S.user ? S.user.email : '');
     el('syncnowrow').style.display = 'flex';
     var gb = el('gcbanner');
-    gb.innerHTML = '<div class="gcok"><div class="dot"></div>Syncing with Google Calendar every 30s</div>';
+    var calInfo = S.calId && S.calId !== 'primary' ? ' (shared calendar active)' : ' (calendar not connected)';
+    gb.innerHTML = '<div class="gcok"><div class="dot"></div>Google Calendar connected' + calInfo + '</div>';
     // Last sync time
     var ls = lsGet('lastSync');
     if (ls) el('lastsync').textContent = 'Last synced: ' + new Date(ls).toLocaleTimeString();
@@ -1121,6 +1122,8 @@ function initG() {
             lsSet('user', S.user);
             // Save email for this user for future matching
             if (matched) lsSet('email_' + matched.id, info.email);
+            // Clear cached calId so we always find the shared calendar fresh
+            lsSet('calId', null); S.calId = null;
             showApp();
             toast('Signed in as ' + name);
             gcEnsure().then(function() {
@@ -1132,6 +1135,7 @@ function initG() {
           }).catch(function() {
             S.user = {name:'Family Member', email:'', role:'owner', isDemo:false};
             lsSet('user', S.user);
+            lsSet('calId', null); S.calId = null;
             showApp();
             gcEnsure().then(function() {
               return gcFetch();
@@ -1152,47 +1156,69 @@ function initG() {
 }
 
 function gcEnsure() {
-  // Check if we already have a saved shared calendar ID
-  var saved = lsGet('sharedCalId');
-  if (saved) { S.calId = saved; return Promise.resolve(); }
-
-  return gapi.client.calendar.calendarList.list().then(function(r) {
+  // Always search fresh - don't rely on cached ID which may be wrong calendar
+  return gapi.client.calendar.calendarList.list({
+    showHidden: true,
+    maxResults: 100
+  }).then(function(r) {
     var cals = r.result.items || [];
-    // Look for FamilySync calendar in their list (shared or owned)
-    var cal = cals.find(function(c) {
+
+    // Find ALL calendars named FamilySync
+    var fsCals = cals.filter(function(c) {
       return c.summary === CALNAME;
     });
-    if (cal) {
-      S.calId = cal.id;
-      lsSet('calId', cal.id);
-      lsSet('sharedCalId', cal.id);
-      return;
-    }
-    // Not found — if owner, create it and share with family
-    var member = FAM.find(function(f) { return S.user && f.name === S.user.name; });
-    var isOwner = !member || member.role === 'owner';
-    if (isOwner) {
-      return gapi.client.calendar.calendars.insert({
-        resource: {
-          summary: CALNAME,
-          description: 'Shared FamilySync Calendar — do not delete',
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      }).then(function(cr) {
-        S.calId = cr.result.id;
-        lsSet('calId', cr.result.id);
-        lsSet('sharedCalId', cr.result.id);
-        // Make it accessible by sharing with all family emails
-        return gcShareCalendar(cr.result.id);
-      });
-    } else {
-      // Viewer — calendar not in their list yet, use primary and show warning
-      toast('Ask Rudi or Tesha to share the FamilySync calendar with you');
-      S.calId = 'primary';
-    }
-  }).catch(function(e) { console.error('gcEnsure error:', e); S.calId = 'primary'; });
-}
 
+    if (fsCals.length === 0) {
+      // No FamilySync calendar found at all
+      var mem = FAM.find(function(f) { return S.user && f.name === S.user.name; });
+      var isOwner = !mem || mem.role === 'owner';
+      if (isOwner) {
+        // Owner: create the shared calendar
+        return gapi.client.calendar.calendars.insert({
+          resource: {
+            summary: CALNAME,
+            description: 'Shared FamilySync Calendar',
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
+        }).then(function(cr) {
+          S.calId = cr.result.id;
+          lsSet('calId', cr.result.id);
+          toast('FamilySync calendar created. Share it with family in Settings.');
+          return cr.result.id;
+        });
+      } else {
+        toast('FamilySync calendar not found. Ask Rudi or Tesha to share it with you via Google Calendar.');
+        S.calId = 'primary';
+        return;
+      }
+    }
+
+    // Prefer a calendar we don't own (i.e. the shared one from owner)
+    // accessRole = 'owner' means WE created it; 'writer'/'reader' means shared with us
+    var sharedCal = fsCals.find(function(c) { return c.accessRole !== 'owner'; });
+    var pickedCal = sharedCal || fsCals[0];
+
+    S.calId = pickedCal.id;
+    lsSet('calId', pickedCal.id);
+
+    // If user has BOTH their own AND a shared one, delete their own duplicate
+    if (sharedCal && fsCals.length > 1) {
+      var ownedDuplicate = fsCals.find(function(c) { return c.accessRole === 'owner' && c.id !== sharedCal.id; });
+      if (ownedDuplicate) {
+        // Remove from calendar list (don't delete, just unsubscribe)
+        gapi.client.calendar.calendarList.delete({ calendarId: ownedDuplicate.id })
+          .catch(function() {});
+        toast('Using shared FamilySync calendar');
+      }
+    }
+
+    return pickedCal.id;
+  }).catch(function(e) {
+    console.error('gcEnsure error:', e);
+    var cached = lsGet('calId');
+    S.calId = cached || 'primary';
+  });
+}
 function gcShareCalendar(calId) {
   // Share calendar with all family emails stored in settings
   var emails = lsGet('familyEmails') || [];
