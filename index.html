@@ -1274,19 +1274,62 @@ function gcFetch() {
 }
 
 // Poll for new events + todos every 30 seconds when signed in
+function gcTodoCreate(t) {
+  if (!S.signed || !S.gapiObj) return Promise.resolve(null);
+  var today = new Date();
+  var ds = today.getFullYear() + '-' + pad(today.getMonth()+1) + '-' + pad(today.getDate());
+  return gapi.client.calendar.events.insert({
+    calendarId: S.calId || 'primary',
+    resource: {
+      summary: t.text, start:{date:ds}, end:{date:ds},
+      extendedProperties: { private: { fsType:'todo', fsDone:'false', fsCreatedAt:t.createdAt } }
+    }
+  }).then(function(r) {
+    setTimeout(function() { syncNow(false); }, 2000);
+    return r.result.id;
+  }).catch(function(e) { console.error('gcTodoCreate:', e); return null; });
+}
+
+function gcTodoUpdate(t) {
+  if (!S.signed || !S.gapiObj || !t.gcalId) return;
+  gapi.client.calendar.events.patch({
+    calendarId: S.calId || 'primary', eventId: t.gcalId,
+    resource: { extendedProperties: { private: { fsType:'todo', fsDone: t.done ? 'true' : 'false' } } }
+  }).then(function() { syncNow(false); })
+    .catch(function(e) { console.error('gcTodoUpdate:', e); });
+}
+
+function gcTodoDel(gcalId) {
+  if (!S.signed || !S.gapiObj || !gcalId) return;
+  gapi.client.calendar.events.delete({ calendarId: S.calId || 'primary', eventId: gcalId })
+    .then(function() { syncNow(false); })
+    .catch(function(e) { console.error('gcTodoDel:', e); });
+}
+
 var gcPollTimer = null;
+var SYNC_INTERVAL = 6 * 60 * 60 * 1000; // sync twice a day (every 6 hours)
+
 function startPoll() {
   if (gcPollTimer) clearInterval(gcPollTimer);
+  // Sync twice a day (every 6 hours) — immediate sync on new entry via syncNow()
   gcPollTimer = setInterval(function() {
     if (!S.signed) return;
-    gcFetch().then(function(count) {
-      if (count !== undefined) {
-        renderAll();
-        renderTodoStrip();
-        renderTodoModal();
-      }
-    });
-  }, 30000);
+    syncNow(false); // silent background sync
+  }, SYNC_INTERVAL);
+}
+
+// syncNow: called after any new event/todo is saved, or on manual tap
+// showToast = true for user-triggered, false for background
+function syncNow(showToast) {
+  if (!S.signed || !S.gapiObj) return Promise.resolve();
+  if (showToast !== false) toast('Syncing...');
+  return gcFetch().then(function() {
+    lsSet('lastSync', new Date().toISOString());
+    renderAll();
+    if (showToast !== false) toast('Synced ✓');
+  }).catch(function(e) {
+    console.error('syncNow error:', e);
+  });
 }
 
 function gcCreate(ev) {
@@ -1398,12 +1441,7 @@ el('gcrow').onclick = function() {
 // Sync now button
 el('syncnowrow').onclick = function() {
   if (!S.signed) return;
-  toast('Syncing...');
-  gcFetch().then(function() {
-    lsSet('lastSync', new Date().toISOString());
-    renderAll();
-    toast('Synced ✓');
-  });
+  syncNow(true);
 };
 
 // Settings toggles
