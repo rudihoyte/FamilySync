@@ -299,6 +299,7 @@ textarea.finp{resize:none;min-height:70px}
     <div class="fsec"><label class="flbl">Family members</label><div class="pchips" id="pchips"></div></div>
     <div class="fsec"><label class="flbl">Location</label><input type="text" class="finp" id="fl" placeholder="e.g. Harrison College"/></div>
     <div class="fsec"><label class="flbl">Repeat</label><div class="rropts" id="rropts"></div></div>
+    <div class="fsec" id="funtil-sec" style="display:none"><label class="flbl">Repeat Until</label><input type="date" class="finp" id="funtil" placeholder="No end date (ongoing)"/><div style="font-size:11px;color:var(--t3);margin-top:4px">Leave blank to repeat indefinitely</div></div>
     <div class="fsec"><label class="flbl">Reminder</label><div class="rtags" id="rtags"></div></div>
     <div class="fsec"><label class="flbl">Notes</label><textarea class="finp" id="fn" placeholder="Any extra details..."></textarea></div>
     <button class="savebtn" id="savebtn">Save Event</button>
@@ -425,9 +426,24 @@ function evsForDate(date) {
     if (ev.rrule && ev.date) {
       var start = new Date(ev.date + 'T00:00:00');
       if (date < start) return false;
+
+      // Check end date — stop recurring after until date
+      var untilMatch = ev.rrule.match(/UNTIL=([0-9]{8})/);
+      if (untilMatch) {
+        var u = untilMatch[1];
+        var until = new Date(u.slice(0,4)+'-'+u.slice(4,6)+'-'+u.slice(6,8)+'T23:59:59');
+        if (date > until) return false;
+      }
+
       var diff = Math.round((date - start) / 86400000);
-      if (ev.rrule.indexOf('DAILY') > -1) return diff >= 0;
+
+      if (ev.rrule.indexOf('DAILY') > -1) return true;
+
+      // Biweekly MUST be checked before weekly (it also contains 'WEEKLY')
+      if (ev.rrule.indexOf('INTERVAL=2') > -1) return diff % 14 === 0;
+
       if (ev.rrule.indexOf('WEEKLY') > -1) return diff % 7 === 0;
+
       if (ev.rrule.indexOf('MONTHLY') > -1) {
         return (new Date(ev.date + 'T00:00:00')).getDate() === date.getDate();
       }
@@ -913,7 +929,24 @@ function showDet(ev) {
       + '<span style="width:22px;height:22px;border-radius:50%;background:' + mb.color + ';display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">' + mb.init + '</span>'
       + mb.name + '</span>' : '';
   }).join('');
-  var rrt = {'':'No repeat','FREQ=DAILY':'Every day','FREQ=WEEKLY':'Every week','FREQ=MONTHLY':'Every month'};
+  var rrtBase = {'FREQ=DAILY':'Every day','FREQ=WEEKLY':'Every week',
+    'FREQ=WEEKLY;INTERVAL=2':'Every 2 weeks','FREQ=MONTHLY':'Every month'};
+  var rruleBase = (ev.rrule || '').replace(/;?UNTIL=[^;]*/g, '').replace(/;?COUNT=[^;]*/g, '');
+  var untilInRule = (ev.rrule || '').match(/UNTIL=([0-9]{8})/);
+  var untilStr = '';
+  if (untilInRule) {
+    var u = untilInRule[1];
+    var untilDt = new Date(u.slice(0,4)+'-'+u.slice(4,6)+'-'+u.slice(6,8));
+    untilStr = ' until ' + untilDt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
+  var rrt = {
+    '': 'No repeat',
+    'FREQ=DAILY': 'Every day',
+    'FREQ=WEEKLY': 'Every week',
+    'FREQ=WEEKLY;INTERVAL=2': 'Every 2 weeks',
+    'FREQ=MONTHLY': 'Every month'
+  };
+  var rruleDisplay = (rrt[rruleBase] || rruleBase || 'No repeat') + untilStr;
   var dtStr = fmtDate(new Date(ev.date + 'T00:00:00'));
   var tmStr = ev.allDay ? '<br>All day' : (st ? ('<br>' + fmtTime(st) + (en ? ' &ndash; ' + fmtTime(en) : '')) : '');
   el('detcon').innerHTML =
@@ -921,7 +954,7 @@ function showDet(ev) {
     + '<div class="drow"><div class="dico">&#128197;</div><div class="dcon"><div class="dlbl">Date &amp; Time</div><div class="dval"><strong>' + dtStr + '</strong>' + tmStr + '</div></div></div>'
     + (ev.location ? '<div class="drow"><div class="dico">&#128205;</div><div class="dcon"><div class="dlbl">Location</div><div class="dval"><strong>' + ev.location + '</strong></div></div></div>' : '')
     + '<div class="drow"><div class="dico">&#128101;</div><div class="dcon"><div class="dlbl">Family Members</div><div class="dval" style="display:flex;flex-wrap:wrap;align-items:center;margin-top:2px">' + px + '</div></div></div>'
-    + (ev.rrule ? '<div class="drow"><div class="dico">&#128260;</div><div class="dcon"><div class="dlbl">Repeat</div><div class="dval">' + (rrt[ev.rrule] || ev.rrule) + '</div></div></div>' : '')
+    + (ev.rrule ? '<div class="drow"><div class="dico">&#128260;</div><div class="dcon"><div class="dlbl">Repeat</div><div class="dval">' + rruleDisplay + '</div></div></div>' : '')
     + '<div class="drow"><div class="dico">&#128276;</div><div class="dcon"><div class="dlbl">Reminder</div><div class="dval">' + ((ev.rem || []).map(function(r) { return rl[String(r)] || (Math.abs(r) + ' min before'); }).join(', ') || 'None') + '</div></div></div>'
     + (ev.notes ? '<div class="drow"><div class="dico">&#128203;</div><div class="dcon"><div class="dlbl">Notes</div><div class="dval">' + ev.notes + '</div></div></div>' : '')
     + (own ? '<div class="evacts"><button class="evact evedit" onclick="openEdit(\'' + ev.id + '\')">Edit</button><button class="evact evdel" onclick="delEv(\'' + ev.id + '\')">Delete</button></div>' : '');
@@ -987,6 +1020,10 @@ function buildForm() {
         document.querySelectorAll('#rropts .rropt').forEach(function(x) { x.classList.remove('on'); });
         div.classList.add('on');
         S.frr = val;
+        // Show end date field for any recurring option
+        var untilSec = el('funtil-sec');
+        if (untilSec) untilSec.style.display = val ? 'block' : 'none';
+        if (!val) { var fu = el('funtil'); if (fu) fu.value = ''; }
       };
     })(o.v, d);
     ro.appendChild(d);
@@ -1016,12 +1053,13 @@ function buildForm() {
 function openNew() {
   var m = FAM.find(function(f) { return S.user && f.name === S.user.name; });
   if (m && m.role !== 'owner') { toast('Only Rudi & Tesha can create events'); return; }
-  S.eid = null; S.fc = COLS[0]; S.fp = ['rudi']; S.fr = [-60]; S.frr = '';
+  S.eid = null; S.fc = COLS[0]; S.fp = ['rudi']; S.fr = [-60]; S.frr = ''; S.funtil = '';
   el('evmodtit').textContent = 'New Event';
   el('ft').value = ''; el('fd').value = isoD(S.sel);
   el('fs').value = '09:00'; el('fe').value = '10:00';
   el('fl').value = ''; el('fn').value = '';
   el('fad').value = 'no'; el('ftimes').style.display = 'block';
+  el('funtil').value = ''; el('funtil-sec').style.display = 'none';
   buildForm(); OM('evmod');
 }
 
@@ -1038,6 +1076,15 @@ function openEdit(id) {
   if (ev.endTime) { var en = new Date(ev.endTime); el('fe').value = pad(en.getHours()) + ':' + pad(en.getMinutes()); }
   el('fl').value = ev.location || ''; el('fn').value = ev.notes || '';
   el('fad').value = ev.allDay ? 'yes' : 'no'; el('ftimes').style.display = ev.allDay ? 'none' : 'block';
+  // Restore until date
+  var untilMatch = (ev.rrule || '').match(/UNTIL=([0-9]{8})/);
+  var untilVal = '';
+  if (untilMatch) {
+    var u = untilMatch[1];
+    untilVal = u.slice(0,4) + '-' + u.slice(4,6) + '-' + u.slice(6,8);
+  }
+  el('funtil').value = untilVal;
+  el('funtil-sec').style.display = ev.rrule ? 'block' : 'none';
   buildForm(); OM('evmod');
 }
 
@@ -1056,12 +1103,21 @@ function saveEv() {
     if (en <= st) en = new Date(st.getTime() + 3600000);
   }
   var id = S.eid || ('ev' + Date.now() + (Math.random() * 1000 | 0));
+  // Build rrule with optional UNTIL end date
+  var rrule = S.frr;
+  var untilVal = el('funtil') ? el('funtil').value : '';
+  if (rrule && untilVal) {
+    // Format UNTIL as YYYYMMDD (remove any existing UNTIL first)
+    rrule = rrule.replace(/;?UNTIL=[^;]*/g, '');
+    var untilDate = untilVal.replace(/-/g, ''); // 20251231
+    rrule = rrule + ';UNTIL=' + untilDate;
+  }
   var ev = {
     id:id, title:title, date:date, allDay:allDay,
     startTime: st ? st.toISOString() : null,
     endTime: en ? en.toISOString() : null,
     color:S.fc, pax:S.fp.slice(), location:el('fl').value.trim(),
-    notes:el('fn').value.trim(), rrule:S.frr, rem:S.fr.slice(),
+    notes:el('fn').value.trim(), rrule:rrule, rem:S.fr.slice(),
     createdAt:new Date().toISOString()
   };
   var btn = el('savebtn');
